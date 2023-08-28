@@ -1,0 +1,1 @@
+python generate_random_fasta.py 100 500 100 output.fasta
