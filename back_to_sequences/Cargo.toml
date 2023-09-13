@@ -1,0 +1,12 @@
+[package]
+name = "back_to_sequences"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nop-json = "2.0"
+serde = "1.0"
+serde_json = "1.0"
+read_iter = "0.1"
