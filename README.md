@@ -34,3 +34,9 @@ sh index_kmers.sh -i fof.txt -k 31
 sh query_reads.sh -i indexed_kmers -q scripts/reads.fasta -o output
 ```
 
+4. back to the read sequences
+```bash
+cd back_to_reads
+cd back_to_sequences 
+cargo run --release -- -t ../output/kmers.tsv -i ../scripts/reads.fasta -o afac.fa 
+
