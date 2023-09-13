@@ -4,7 +4,7 @@
 usage()
 {
   echo "Usage: "
-  echo "  ./index_kmers.sh [-i str] [-o str] [-k int] [-t int] [-h]"
+  echo "  ./${0} [-i str] [-o str] [-k int] [-t int] [-h]"
   echo "Options: "
   echo "  -i <path> -> input file path"
   echo "  -o <path> -> output index file path, default: indexed_kmers"
@@ -60,5 +60,30 @@ if [ -z "${input_file_path}" ]; then
   exit 1
 fi
 
+
+# clean potential previous runs
+rm -rf kmindex_dir ${output_index_file_path}
+
+# get the path of the current directory:
+current_dir_path=`pwd`
+
 # run kmindex on the input file:
-./bin/kmindex -i ${input_file_path} -o ${output_index_file_path} -k ${kmer_size} -t ${nb_threads}
+cmd="${current_dir_path}/bin/kmindex build -f ${input_file_path} \
+        --run-dir kmindex_dir --index ${output_index_file_path} \
+        --register-as kmers -k ${kmer_size} -t ${nb_threads} \
+        --bloom-size 30000000 \
+        --hard-min 1 "
+echo "Running: ${cmd}"
+${cmd}
+# get the return code:
+return_code=$?
+# check the return code:
+if [ ${return_code} -ne 0 ]; then
+  echo "Error: kmindex returned with error code ${return_code}"
+  exit 1
+else
+  echo "Indexed kmers are in file ${output_index_file_path}"
+  exit 1
+fi
+
+

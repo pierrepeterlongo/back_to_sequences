@@ -3,4 +3,7 @@
 # get the full path of the current directory
 install_bin_path=`pwd`
 
-cd ./thirdparty/kmindex/ && sh install.sh -p ${install_bin_path}
+# install kmindex
+cmd="cd ./thirdparty/kmindex/ && sh install.sh -p ${install_bin_path}"
+echo $cmd
+eval $cmd

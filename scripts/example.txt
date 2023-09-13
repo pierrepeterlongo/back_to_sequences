@@ -1,1 +1,2 @@
-python generate_random_fasta.py 100 500 100 output.fasta
+python generate_random_fasta.py 100 500 100 reads.fasta
+python3 extract_random_kmers_from_a_fasta_file.py --canonical reads.fasta 31 10 kmers.fasta 
