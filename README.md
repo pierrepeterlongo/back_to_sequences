@@ -9,6 +9,12 @@ Given a set of kmers (fasta format) and a set of sequences (fasta format), this 
  3. Finally, the reads are extracted from the fasta file, given the kmindex output (that contains only headers)
  It is possible to set up a threshold on the ration of shared kmers between the read and the query.
 
+## Install:
+```bash
+git clone ...
+cargo install --path . --locked
+```
+
 ## Dependencies
 * [kmtricks](https://github.com/tlemane/kmtricks). Note that kmtrics is provided by the conda version of kmindex.
 * [kmindex](https://github.com/tlemane/kmindex)
@@ -29,16 +35,16 @@ echo D:kmers.fasta > fof.txt
 
 2. index the kmers: 
 ```bash
-cargo run -- index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
+back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
 ```
 3. search the kmers in the reads: 
 ```bash
-cargo run -- get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_headers headers --kmindex_path ./bin/kmindex
+back_to_sequences get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_headers headers --kmindex_path ./bin/kmindex
 ```
 
 4. back to the read sequences
 ```bash
-cargo run -- to_reads --in_tsv_dir headers --in_fasta reads.fasta --out_fasta out.fasta --threshold 0.0
+back_to_sequences to_reads --in_tsv_dir headers --in_fasta reads.fasta --out_fasta out.fasta --threshold 0.0
 ```
 
 ### kmindex and kmtricks compilation note for mac os users.
