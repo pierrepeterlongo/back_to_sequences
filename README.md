@@ -27,9 +27,10 @@ For compiling with mac, cf the note at the end of the file.
 # Generate 100000 reads of average length 500 and minimum length 100
 python scripts/generate_random_fasta.py 100000 500 100 reads.fasta
 
-# Extract 10 random kmers of length 31 from the reads
+# Extract 100 random kmers of length 31 from the reads
 python3 scripts/extract_random_kmers_from_a_fasta_file.py --canonical reads.fasta 31 100 kmers.fasta
-# Create the fof file: 
+
+# Create the file of file, used by kmindex, containing the kmers. D is simply a prefix. 
 echo D:kmers.fasta > fof.txt
 ```
 
@@ -46,6 +47,9 @@ back_to_sequences get_headers --in_sequences reads.fasta --in_kmer_index indexed
 ```bash
 back_to_sequences to_reads --in_tsv_dir headers --in_fasta reads.fasta --out_fasta out.fasta --threshold 0.0
 ```
+
+That's all, the `out.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `kmers.fasta`.
+The headers of each read is the same as in `reads.fasta`, plus the ratio of shared kmers.
 
 ### kmindex and kmtricks compilation note for mac os users.
 kmindex install is a bit complex (sept 2023)
