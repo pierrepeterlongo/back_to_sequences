@@ -1,21 +1,19 @@
 # Kmer2sequences
 
-## Install, struggling with mac os as of 13 set 2023
-* kmtricks: compile plus depuis 1.2.1. 
-	* Installation via conda.
-	* conda: soucis noarch et arm64. Solution: 
-```bash
- conda config --env --set subdir osx-64
- conda create -p env_kmtricks_1.2.1 kmtricks=1.2.1 
- conda activate /Users/ppeterlo/workspace/kmer2sequences/env_kmtricks_1.2.1
-```
+## Description
+Given a set of kmers (fasta format) and a set of sequences (fasta format), this tool will extract the sequences containing the kmers.
 
-* kmindex: commit 1b018539a4a1730a51840ed5a9330c023baf3814
-	* Compilation sous mac: changer les lignes ` asm volatile("pause");` par `asm volatile("isb" : : : "memory");` dans `lib/include/kmindex/spinlock.hpp`. 
-	* Commenter le `if (!(kmv >= min_kmv_required))` ligne 219 de `app/kmindex/build.cpp`
+**key idea**: 
+ 1. kmers (even if they are few) are indexed using kmindex. 
+ 2. Then reads are queried against the index, again using kmindex.
+ 3. Finally, the reads are extracted from the fasta file, given the kmindex output (that contains only headers)
+ It is possible to set up a threshold on the ration of shared kmers between the read and the query.
 
-ouf...
+## Dependencies
+* [kmtricks](https://github.com/tlemane/kmtricks). Not is provided by the conda version of kmindex
+* [kmindex](https://github.com/tlemane/kmindex)
 
+For compiling with mac, cf the note at the end of the file.
 
 ## complete example: 
 1. generate random reads and extract some of their kmers: 
@@ -43,3 +41,17 @@ cargo run -- get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmer
 cargo run -- to_reads --in_tsv_dir headers --in_fasta reads.fasta --out_fasta out.fasta --threshold 0.0
 ```
 
+### kmindex and kmtricks compilation note for mac os users.
+kmindex install is a bit complex (sept 2023)
+* kmtricks: does not compile on mac since 1.2.1. Solution: 
+	* Installation via conda.
+	* In case of conda issues between noarch and arm64. Solution: 
+```bash
+ conda config --env --set subdir osx-64
+ conda create -p env_kmtricks_1.2.1 kmtricks=1.2.1 
+ conda activate /Users/ppeterlo/workspace/kmer2sequences/env_kmtricks_1.2.1
+```
+* kmindex: commit 1b018539a4a1730a51840ed5a9330c023baf3814
+	* For compiling with a mac: change lines ` asm volatile("pause");` by `asm volatile("isb" : : : "memory");` in `lib/include/kmindex/spinlock.hpp`. 
+	* Comment `if (!(kmv >= min_kmv_required))` line 219 of `app/kmindex/build.cpp`
+(sorry for the trouble)
