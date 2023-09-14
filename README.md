@@ -55,3 +55,4 @@ kmindex install is a bit complex (sept 2023)
 	* For compiling with a mac: change lines ` asm volatile("pause");` by `asm volatile("isb" : : : "memory");` in `lib/include/kmindex/spinlock.hpp`. 
 	* Comment `if (!(kmv >= min_kmv_required))` line 219 of `app/kmindex/build.cpp`
 (sorry for the trouble)
+
