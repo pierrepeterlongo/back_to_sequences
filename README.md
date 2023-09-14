@@ -10,7 +10,7 @@ Given a set of kmers (fasta format) and a set of sequences (fasta format), this 
  It is possible to set up a threshold on the ration of shared kmers between the read and the query.
 
 ## Dependencies
-* [kmtricks](https://github.com/tlemane/kmtricks). Not is provided by the conda version of kmindex
+* [kmtricks](https://github.com/tlemane/kmtricks). Note that kmtrics is provided by the conda version of kmindex.
 * [kmindex](https://github.com/tlemane/kmindex)
 
 For compiling with mac, cf the note at the end of the file.
