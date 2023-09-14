@@ -20,23 +20,26 @@ ouf...
 ## complete example: 
 1. generate random reads and extract some of their kmers: 
 ```bash
-cd scripts
-python generate_random_fasta.py 100 500 100 reads.fasta
-python3 extract_random_kmers_from_a_fasta_file.py --canonical reads.fasta 31 10 kmers.fasta
-cd -
+# Generate 100000 reads of average length 500 and minimum length 100
+python scripts/generate_random_fasta.py 100000 500 100 reads.fasta
+
+# Extract 10 random kmers of length 31 from the reads
+python3 scripts/extract_random_kmers_from_a_fasta_file.py --canonical reads.fasta 31 100 kmers.fasta
+# Create the fof file: 
+echo D:kmers.fasta > fof.txt
 ```
+
 2. index the kmers: 
 ```bash
-sh index_kmers.sh -i fof.txt -k 31
+cargo run -- index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
 ```
 3. search the kmers in the reads: 
 ```bash
-sh query_reads.sh -i indexed_kmers -q scripts/reads.fasta -o output
+cargo run -- get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_headers headers --kmindex_path ./bin/kmindex
 ```
 
 4. back to the read sequences
 ```bash
-cd back_to_reads
-cd back_to_sequences 
-cargo run --release -- -t ../output/kmers.tsv -i ../scripts/reads.fasta -o afac.fa 
+cargo run -- to_reads --in_tsv_dir headers --in_fasta reads.fasta --out_fasta out.fasta --threshold 0.0
+```
 

@@ -1,4 +1,0 @@
-Idée: indexer les kmers et lire les reads. 
-Sortie: quels reads contiennent au moins un kmer indexé
-Puis: identifier parmis ces reads quels étaient vraiment les kmers
-Si on fait un peu d'enrobage (visualisation du graph associé aux reads retrouvés, ...) ça pourrait être super utile je pense

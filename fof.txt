@@ -1,1 +1,0 @@
-D1: /Users/ppeterlo/workspace/kmer2sequences/scripts/kmers.fasta
