@@ -11,7 +11,7 @@ Given a set of kmers (fasta format) and a set of sequences (fasta format), this 
 
 ## Install:
 ```bash
-git clone ...
+git clone https://github.com/pierrepeterlongo/kmer2sequences.git
 cargo install --path . --locked
 ```
 
