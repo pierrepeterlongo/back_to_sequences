@@ -1,4 +1,5 @@
-use fasta::read::FastaReader;
+// use fasta::read::FastaReader;
+use fxread::initialize_reader;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -6,7 +7,7 @@ use std::path::Path;
 use std::io::Write;
 use glob::glob;
 
-use clap::{ArgMatches};
+use clap::ArgMatches;
 
 
 
@@ -68,20 +69,21 @@ fn output_reads (map: HashMap<String, f32>, in_fasta: String, out_fasta: String)
     // close the input fasta file
     
     let mut cnt = 0;
-    let infile = Path::new(&in_fasta);  
+    // let infile = Path::new(&in_fasta);  
     let mut output = File::create(out_fasta.clone())?;
-    for [description, seq] in FastaReader::new(infile) {
-        // if the header (description, removing the first ">") is in the map, write it to the output fasta file
-        let mut header = description.clone();
-        header.remove(0);
+    let reader = initialize_reader(&in_fasta).unwrap();
+    // for [description, seq] in FastaReader::new(infile) {
+    for record in reader {
+        let header = record.id_str_checked().unwrap().to_string();
         if map.contains_key(&header) {
             cnt += 1;
-            // write the two lines in the output file
-            output.write_all(description.as_bytes())?;
-            output.write_all(b" ")?;
-            output.write_all(map.get(&header).unwrap().to_string().as_bytes())?;
-            output.write_all(b"\n")?;
-            output.write_all(seq.as_bytes())?;
+            output.write_all(record.as_str_checked().unwrap().as_bytes())?;
+            // // write the two lines in the output file
+            // output.write_all(description.as_bytes())?;
+            // output.write_all(b" ")?;
+            // output.write_all(map.get(&header).unwrap().to_string().as_bytes())?;
+            // output.write_all(b"\n")?;
+            // output.write_all(seq.as_bytes())?;
             output.write_all(b"\n")?;
         }
     }
