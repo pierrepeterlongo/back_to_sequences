@@ -1,7 +1,7 @@
 # Kmer2sequences
 
 ## Description
-Given a set of kmers (fasta format) and a set of sequences (fasta format), this tool will extract the sequences containing the kmers.
+Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the kmers.
 
 **key idea**: 
  1. kmers (even if they are few) are indexed using kmindex. 
