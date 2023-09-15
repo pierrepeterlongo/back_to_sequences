@@ -90,13 +90,13 @@ fn output_reads (map: HashMap<String, f32>, in_fasta: String, out_fasta: String)
 }
 
 pub fn to_reads(sub_matches: &ArgMatches) {
-    let intsvdir = sub_matches.get_one::<String>("INTSVDIR").map(|s| s.clone()).unwrap();
+    let inheaders = sub_matches.get_one::<String>("HEADERS").map(|s| s.clone()).unwrap();
     let infasta = sub_matches.get_one::<String>("INFASTA").map(|s| s.clone()).unwrap();
     let outfasta = sub_matches.get_one::<String>("OUTFASTA").map(|s| s.clone()).unwrap();
     let threshold= sub_matches.get_one::<f32>("THRESHOLD").map(|s| s.clone()).unwrap();
     println!(
             "'toreads' was used, intsv is: {:?}, inasta is {:?} out is: {:?}, threshold is: {:?}",
-            intsvdir, infasta, outfasta, threshold);
-    let map = get_non_empty_headers(intsvdir, threshold);
+            inheaders, infasta, outfasta, threshold);
+    let map = get_non_empty_headers(inheaders, threshold);
     let _ = output_reads (map, infasta, outfasta);
 }

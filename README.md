@@ -22,7 +22,7 @@ cargo install --path . --locked
 For compiling with mac, cf the note at the end of the file.
 
 ## complete example: 
-1. generate random reads and extract some of their kmers: 
+### generate random reads and extract some of their kmers: 
 ```bash
 # Generate 100000 reads of average length 500 and minimum length 100
 python scripts/generate_random_fasta.py 100000 500 100 reads.fasta
@@ -34,22 +34,33 @@ python3 scripts/extract_random_kmers_from_a_fasta_file.py --canonical reads.fast
 echo D:kmers.fasta > fof.txt
 ```
 
-2. index the kmers: 
+### Index kmers and extract the reads containing the kmers:
+
+1. index the kmers: 
 ```bash
 back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
 ```
-3. search the kmers in the reads: 
+
+2. extract the headers of the reads containing the kmers: 
 ```bash
-back_to_sequences get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_headers headers --kmindex_path ./bin/kmindex
+back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
 ```
 
-4. back to the read sequences
+**Note:** This second step can be subdivided into two commands (for debugging purpose, or for obtaining only headers of sequences containing the kmers):
+
+	2.1 search the kmers in the reads: 
 ```bash
-back_to_sequences to_reads --in_tsv_dir headers --in_fasta reads.fasta --out_fasta out.fasta --threshold 0.0
+back_to_sequences query_sequences_get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_headers headers --kmindex_path ./bin/kmindex
 ```
 
-That's all, the `out.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `kmers.fasta`.
+	2.2 back to the read sequences
+```bash
+back_to_sequences query_sequences_to_reads --in_headers headers --in_fasta reads.fasta --out_fasta filtered_reads.fasta --threshold 0.0
+```
+
+That's all, the `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `kmers.fasta`.
 The headers of each read is the same as in `reads.fasta`, plus the ratio of shared kmers.
+
 
 ### kmindex and kmtricks compilation note for mac os users.
 kmindex install is a bit complex (sept 2023)
@@ -59,7 +70,7 @@ kmindex install is a bit complex (sept 2023)
 ```bash
  conda config --env --set subdir osx-64
  conda create -p env_kmtricks_1.2.1 kmtricks=1.2.1 
- conda activate /Users/ppeterlo/workspace/kmer2sequences/env_kmtricks_1.2.1
+ conda activate ./env_kmtricks_1.2.1
 ```
 * kmindex: commit 1b018539a4a1730a51840ed5a9330c023baf3814
 	* For compiling with a mac: change lines ` asm volatile("pause");` by `asm volatile("isb" : : : "memory");` in `lib/include/kmindex/spinlock.hpp`. 

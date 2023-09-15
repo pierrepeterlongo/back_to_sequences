@@ -1,4 +1,4 @@
-use clap::{ArgMatches};
+use clap::ArgMatches;
 use crate::get_km_paths;
 use std::fs;
 use std::process::Command as RunCommand;
@@ -12,7 +12,7 @@ pub fn get_headers (sub_matches: &ArgMatches) {
     
     let index_kmers = sub_matches.get_one::<String>("INKMERS").map(|s| s.clone()).unwrap();
     let infasta = sub_matches.get_one::<String>("INFASTA").map(|s| s.clone()).unwrap();
-    let outheaders = sub_matches.get_one::<String>("OUTHEADERS").map(|s| s.clone()).unwrap();
+    let outheaders = sub_matches.get_one::<String>("HEADERS").map(|s| s.clone()).unwrap();
     let t = sub_matches.get_one::<u32>("T").map(|s| s.clone()).unwrap();
 
     // check that index_kmers is a non empty directory:
