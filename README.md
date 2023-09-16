@@ -16,8 +16,8 @@ cargo install --path . --locked
 ```
 
 ## Dependencies
-* [kmtricks](https://github.com/tlemane/kmtricks). Note that kmtrics is provided by the conda version of kmindex.
 * [kmindex](https://github.com/tlemane/kmindex)
+	* kmindex also requires [kmtricks](https://github.com/tlemane/kmtricks). kmtricks is provided by the conda version of kmindex, but if you install kmindex from source, you will need to install kmtricks.
 
 For compiling with mac, cf the note at the end of the file.
 
