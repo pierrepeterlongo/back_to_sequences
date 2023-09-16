@@ -69,7 +69,6 @@ fn output_reads (map: HashMap<String, f32>, in_fasta: String, out_fasta: String)
     // close the input fasta file
     
     let mut cnt = 0;
-    // let infile = Path::new(&in_fasta);  
     let mut output = File::create(out_fasta.clone())?;
     let reader = initialize_reader(&in_fasta).unwrap();
     // for [description, seq] in FastaReader::new(infile) {
@@ -77,14 +76,33 @@ fn output_reads (map: HashMap<String, f32>, in_fasta: String, out_fasta: String)
         let header = record.id_str_checked().unwrap().to_string();
         if map.contains_key(&header) {
             cnt += 1;
-            output.write_all(record.as_str_checked().unwrap().as_bytes())?;
+            let record_as_string = record.as_str_checked().unwrap().trim().as_bytes();
+            let mut iter = record_as_string.split(|&x| x == b'\n');
+            // for line in iter {
+            //     println!("{:?}", line);
+            // }
+            let stringheader = iter.next().unwrap();
+            // write the header in the output file with the value in the map
+            output.write_all(stringheader)?;
+            output.write_all(b" ")?;
+            output.write_all(map.get(&header).unwrap().to_string().as_bytes())?;
+            output.write_all(b"\n")?;
+            for line in iter {
+                output.write_all(line)?;
+                output.write_all(b"\n")?;
+            }
+            
+            
+            
+            // add the  value to the header
+            // output.write_all(record.as_str_checked().unwrap().as_bytes())?;
             // // write the two lines in the output file
             // output.write_all(description.as_bytes())?;
             // output.write_all(b" ")?;
             // output.write_all(map.get(&header).unwrap().to_string().as_bytes())?;
             // output.write_all(b"\n")?;
             // output.write_all(seq.as_bytes())?;
-            output.write_all(b"\n")?;
+            // output.write_all(b"\n")?;
         }
     }
     println!("Number of sequences in the output fasta file {} : {}", out_fasta, cnt);
@@ -96,9 +114,6 @@ pub fn to_reads(sub_matches: &ArgMatches) {
     let infasta = sub_matches.get_one::<String>("INFASTA").map(|s| s.clone()).unwrap();
     let outfasta = sub_matches.get_one::<String>("OUTFASTA").map(|s| s.clone()).unwrap();
     let threshold= sub_matches.get_one::<f32>("THRESHOLD").map(|s| s.clone()).unwrap();
-    println!(
-            "'toreads' was used, intsv is: {:?}, inasta is {:?} out is: {:?}, threshold is: {:?}",
-            inheaders, infasta, outfasta, threshold);
     let map = get_non_empty_headers(inheaders, threshold);
     let _ = output_reads (map, infasta, outfasta);
 }

@@ -21,6 +21,26 @@ cargo install --path . --locked
 
 For compiling with mac, cf the note at the end of the file.
 
+## Quick benchmark
+Reproducible by running `benchmark.sh` in the scripts folder.
+Results obtained on a macbook pro Apple M2 Pro, 16Go RAM
+* Indexed: 100000 kmers of length 31 (takes 2s)
+* Queried: from 1 to 1 millions reads, each of average length 500
+
+| Number of reads | Time (s) |
+|-----------------|----------|
+| 1               | 0.2      |
+| 10              | 0.2      |
+| 100             | 0.2      |	
+| 1,000           | 0.2      |
+| 10,000          | 0.2    	 |
+| 100,000         | 1.2    	 |
+| 1,000000        | 15.0   	 |
+
+
+
+
+
 ## complete example: 
 ### generate random reads and extract some of their kmers: 
 ```bash
