@@ -24,10 +24,10 @@ For compiling with mac, cf the note at the end of the file.
 ## Quick benchmark
 Reproducible by running `benchmark.sh` in the scripts folder.
 Results obtained on a macbook pro Apple M2 Pro, 16Go RAM 
-* Indexed: 100000 kmers of length 31 (takes 2s)
+* Indexed: 100,000 kmers of length 31 (takes 2s)
 * Queried: from 1 to 1 million reads, each of average length 500
 
-| Number of reads | Time mac (s) |  max RAM |
+| Number of reads | Time (s) |  max RAM |
 |-----------------|----------|---|
 | 1               | 0.2      |5.47 kb |
 | 10              | 0.2      | 6.31 kb| 
