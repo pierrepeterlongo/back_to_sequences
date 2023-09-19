@@ -1,4 +1,5 @@
 # Kmer2sequences
+[![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
 
 ## Description
 Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the kmers.
@@ -8,6 +9,11 @@ Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta
  2. Then reads are queried against the index, again using kmindex.
  3. Finally, the reads are extracted from the fasta file, given the kmindex output (that contains only headers)
  It is possible to set up a threshold on the ration of shared kmers between the read and the query.
+
+ There are two commands to use: 
+ 1. `back_to_sequences index_kmers`: indexes the kmers
+ 2. `back_to_sequences query_sequences`: find the sequences that contain the indexed kmers
+ A full example with options is given below.
 
 ## Install:
 ```bash
@@ -37,13 +43,8 @@ Results obtained on a macbook pro Apple M2 Pro, 16Go RAM
 | 100,000         | 1.2    	 | 0.74 Mb |
 | 1,000,000       | 15.0   	 | 6.58 Mb |
 
-
-
-
-
-
 ## complete example: 
-### generate random reads and extract some of their kmers: 
+### For testing: generate random reads and extract some of their kmers: 
 ```bash
 # Generate 100000 reads of average length 500 and minimum length 100
 python scripts/generate_random_fasta.py 100000 500 100 reads.fasta
@@ -97,4 +98,11 @@ kmindex install is a bit complex (sept 2023)
 	* For compiling with a mac: change lines ` asm volatile("pause");` by `asm volatile("isb" : : : "memory");` in `lib/include/kmindex/spinlock.hpp`. 
 	* Comment `if (!(kmv >= min_kmv_required))` line 219 of `app/kmindex/build.cpp`
 (sorry for the trouble)
+
+
+# TODO
+* [ ] Add a validation test
+* [ ] Add a number of shared kmers per sequence instead of only their ratio + add a threshold on the number of shared kmers
+* [ ] Parallelize the read extraction step
+* [ ] Thinks about a way to adapt this to protein sequences
 
