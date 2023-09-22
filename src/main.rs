@@ -58,6 +58,13 @@ fn main() {
                     .default_value("8")
                     .help("kmindex number of threads")
             )
+            .arg(
+                arg!([BLOOMSIZE])
+                    .value_parser(value_parser!(u64))
+                    .long("bloom_size")
+                    .default_value("30000000")
+                    .help("size of the bloom filter in bits")
+            )
             .about("Index kmers")
         )
 

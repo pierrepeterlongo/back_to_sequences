@@ -18,6 +18,8 @@ pub fn index_kmers(sub_matches: &ArgMatches) {
     let k = sub_matches.get_one::<u32>("K").map(|s| s.clone()).unwrap();
     let t = sub_matches.get_one::<u32>("T").map(|s| s.clone()).unwrap();
 
+    let bloom_size = sub_matches.get_one::<u64>("BLOOMSIZE").map(|s| s.clone()).unwrap();
+
     // check that inkmers is a non empty file:
     // Attempt to get metadata for the file
     if let Ok(metadata) = fs::metadata(inkmers.clone()) {
@@ -54,7 +56,7 @@ pub fn index_kmers(sub_matches: &ArgMatches) {
     cmd.arg("-t");
     cmd.arg(&t.to_string());
     cmd.arg("--bloom-size");
-    cmd.arg("30000000");
+    cmd.arg(&bloom_size.to_string());
     cmd.arg("--hard-min");
     cmd.arg("1");
     cmd.arg("--km-path");

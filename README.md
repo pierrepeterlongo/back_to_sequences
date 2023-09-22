@@ -111,4 +111,5 @@ kmindex install is a bit complex (sept 2023)
 	* [ ] ? add a threshold on the number of shared kmers
 * [ ] Parallelize the read extraction step
 * [ ] Thinks about a way to adapt this to protein sequences
-* [ ] Add an option to set the size of the bloom filter used by kmindex
+* [X] Add an option to set the size of the bloom filter used by kmindex
+* [ ] Estimate the FP rate (that should be null or negligible when the number of kmer to search is lower than a few thousnads)
