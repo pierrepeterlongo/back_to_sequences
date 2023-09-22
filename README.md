@@ -3,6 +3,11 @@
 
 ## Description
 Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the kmers.
+Each sequence is output with its original header + the ratio of shared kmers + the number of shared kmers.:
+```
+>original_header 0.011494253 1
+GAATTGTGATACTTGCTGCCGTTAACACAGCCACTCACCTCTGTACACCACACTGGTCCGTGGAGGGTGACAAGCATAACATAGTTCGTATGTGTTGCACGCCCT
+```
 
 **key idea**: 
  1. kmers (even if they are few) are indexed using kmindex. 
@@ -77,7 +82,7 @@ back_to_sequences query_sequences_get_headers --in_sequences reads.fasta --in_km
 
 	2.2 back to the read sequences
 ```bash
-back_to_sequences query_sequences_to_reads --in_headers headers --in_fasta reads.fasta --out_fasta filtered_reads.fasta --threshold 0.0
+back_to_sequences query_sequences_to_reads --in_headers headers --in_fasta reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --threshold 0.0
 ```
 
 That's all, the `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `kmers.fasta`.
@@ -102,7 +107,8 @@ kmindex install is a bit complex (sept 2023)
 
 # TODO
 * [ ] Add a validation test
-* [ ] Add a number of shared kmers per sequence instead of only their ratio + add a threshold on the number of shared kmers
+* [X] Add a number of shared kmers per sequence instead of only their ratio 
+	* [ ] ? add a threshold on the number of shared kmers
 * [ ] Parallelize the read extraction step
 * [ ] Thinks about a way to adapt this to protein sequences
-
+* [ ] Add an option to set the size of the bloom filter used by kmindex

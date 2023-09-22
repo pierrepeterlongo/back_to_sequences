@@ -1,6 +1,6 @@
-// use fasta::read::FastaReader;
 use fxread::initialize_reader;
 use std::collections::HashMap;
+use std::f32::consts::E;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -58,7 +58,7 @@ fn get_non_empty_headers (in_tsv_dir: String, threshold: f32) -> HashMap<String,
 }
 
 
-fn output_reads (map: HashMap<String, f32>, in_fasta: String, out_fasta: String) -> std::io::Result<()> {
+fn output_reads (map: HashMap<String, f32>, in_fasta: String, out_fasta: String, ksize: usize) -> std::io::Result<()> {
     
     // read the input fasta file
     // for each header, check if it is in the map
@@ -74,39 +74,57 @@ fn output_reads (map: HashMap<String, f32>, in_fasta: String, out_fasta: String)
     // for [description, seq] in FastaReader::new(infile) {
     for record in reader {
         let header = record.id_str_checked().unwrap().to_string();
-        if map.contains_key(&header) {
+        let score = map.get(&header);
+        if score != None { // map.contains_key(&header) {
             cnt += 1;
             let record_as_string = record.as_str_checked().unwrap().trim().as_bytes();
             let mut iter = record_as_string.split(|&x| x == b'\n');
-            // for line in iter {
-            //     println!("{:?}", line);
-            // }
             let stringheader = iter.next().unwrap();
             // write the header in the output file with the value in the map
             output.write_all(stringheader)?;
             output.write_all(b" ")?;
-            output.write_all(map.get(&header).unwrap().to_string().as_bytes())?;
+            output.write_all(score.unwrap().to_string().as_bytes())?;
+
+            // computes and write the number of shared kmers based on the length of the sequence and on the ratio of shared kmers in the map
+            let acgt_sequence = iter.next().unwrap();
+            if ksize > 0 {
+                let length = acgt_sequence.len();
+                let ratio = score.unwrap();
+                let number_of_shared_kmers = ((length - ksize + 1) as f32 * ratio).round();
+                output.write_all(b" ")?;
+                output.write_all(number_of_shared_kmers.to_string().as_bytes())?;
+            }
+            output.write_all(b"\n")?;
+            output.write_all(acgt_sequence)?;
             output.write_all(b"\n")?;
             for line in iter {
                 output.write_all(line)?;
                 output.write_all(b"\n")?;
             }
-            
-            
-            
-            // add the  value to the header
-            // output.write_all(record.as_str_checked().unwrap().as_bytes())?;
-            // // write the two lines in the output file
-            // output.write_all(description.as_bytes())?;
-            // output.write_all(b" ")?;
-            // output.write_all(map.get(&header).unwrap().to_string().as_bytes())?;
-            // output.write_all(b"\n")?;
-            // output.write_all(seq.as_bytes())?;
-            // output.write_all(b"\n")?;
         }
     }
     println!("Number of sequences in the output fasta file {} : {}", out_fasta, cnt);
     Ok(())
+}
+
+fn extract_kmer_size(indexed_kmers_json_file: &String) -> usize {
+    if let Ok(lines) = read_lines(indexed_kmers_json_file) {
+        // Consumes the iterator, returns an (Optional) String
+        for line in lines {
+            if let Ok(ip) = line {
+                let mut iter = ip.split(":");
+                let key = iter.next().unwrap();
+                // println!("key: {}", key);
+                if key.contains("smer_size"){//} == "\"smer_size\"" {
+                    let value = iter.next().unwrap().trim();
+                    // println!("value: {}", value);
+                    return value.parse::<usize>().unwrap();
+                }
+            }
+        }
+    }
+    println!("Warning, no kmer size found in {}, number of shared kmers cannot be computed", indexed_kmers_json_file.clone());
+    0
 }
 
 pub fn to_reads(sub_matches: &ArgMatches) {
@@ -114,6 +132,10 @@ pub fn to_reads(sub_matches: &ArgMatches) {
     let infasta = sub_matches.get_one::<String>("INFASTA").map(|s| s.clone()).unwrap();
     let outfasta = sub_matches.get_one::<String>("OUTFASTA").map(|s| s.clone()).unwrap();
     let threshold= sub_matches.get_one::<f32>("THRESHOLD").map(|s| s.clone()).unwrap();
+    let indexed_kmers_json_file: String = sub_matches.get_one::<String>("INKMERS").map(|s| s.clone()).unwrap() + "/index.json";
+    let ksize = extract_kmer_size(&indexed_kmers_json_file);
+    // prints the ksize 
+    // println!("kmer size: {}", ksize);
     let map = get_non_empty_headers(inheaders, threshold);
-    let _ = output_reads (map, infasta, outfasta);
+    let _ = output_reads (map, infasta, outfasta, ksize);
 }
