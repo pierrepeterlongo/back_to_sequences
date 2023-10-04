@@ -68,14 +68,14 @@ echo D:kmers.fasta > fof.txt
 back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
 ```
 
-2. extract the headers of the reads containing the kmers: 
+2. extract the reads containing the kmers: 
 ```bash
 back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
 ```
 
 **Note:** This second step can be subdivided into two commands (for debugging purpose, or for obtaining only headers of sequences containing the kmers):
 
-	2.1 search the kmers in the reads: 
+	2.1 search the kmers in the reads (finds the headers of reads continaing indexed kmers): 
 ```bash
 back_to_sequences query_sequences_get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_headers headers --kmindex_path ./bin/kmindex
 ```
@@ -112,4 +112,4 @@ kmindex install is a bit complex (sept 2023)
 * [ ] Parallelize the read extraction step
 * [ ] Thinks about a way to adapt this to protein sequences
 * [X] Add an option to set the size of the bloom filter used by kmindex
-* [ ] Estimate the FP rate (that should be null or negligible when the number of kmer to search is lower than a few thousnads)
+* [ ] Estimate the FP rate (that should be null or negligible when the number of kmer to search is lower than a few thousands)
