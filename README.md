@@ -88,8 +88,33 @@ back_to_sequences query_sequences_to_reads --in_headers headers --in_fasta reads
 That's all, the `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `kmers.fasta`.
 The headers of each read is the same as in `reads.fasta`, plus the ratio of shared kmers.
 
+## Validation 
+The kmindex approach is probabilistic, as it uses a bloom filter for indexing the kmers.
+We propose a way to validate the results obtained by `kmer2sequences`, by using a second approach, based on a hash table. It requires more time and memory than `kmer2sequences`. It can be applied on the results of the filtered reads (as `kmer2sequences` does not suffer from false negative calls). 
 
-### kmindex and kmtricks compilation note for mac os users.
+Here is a small example. Suppose you estimated the number of shared kmers using the commands above: 
+```bash
+back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
+back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
+```
+
+You may now verify the exactness or the overestimations using: 
+```
+cargo run --bin validation kmers.fasta filtered_reads.fasta validation.fasta
+```
+
+The `validation.fasta` file is the same as `filtered_reads.fasta`, except that each head contains an additional integer value, being the exact number of shared kmers with the `kmers.fasta` file.
+
+Example of a header in `validation.fasta`:
+```
+>sequence453 0.003968254 1 1
+CGGTTCGAGGCTGGCCTGAGCCACCGTGCCTAA...
+```
+The first two values (0.003968254 1) are those already computed by kmer2sequences. The third value (1) is the exact number of shared kmers. In this case the estimation is perfect. 
+
+
+
+## kmindex and kmtricks compilation note for mac os users.
 kmindex install is a bit complex (sept 2023)
 * kmtricks: does not compile on mac since 1.2.1. Solution: 
 	* Installation via conda.
@@ -106,7 +131,7 @@ kmindex install is a bit complex (sept 2023)
 
 
 # TODO
-* [ ] Add a validation test
+* [X] Add a validation test (04/10/2023)
 * [X] Add a number of shared kmers per sequence instead of only their ratio 
 	* [ ] ? add a threshold on the number of shared kmers
 * [ ] Parallelize the read extraction step
