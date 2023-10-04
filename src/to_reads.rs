@@ -1,6 +1,6 @@
 use fxread::initialize_reader;
 use std::collections::HashMap;
-use std::f32::consts::E;
+
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;

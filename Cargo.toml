@@ -1,5 +1,6 @@
 [package]
 name = "back_to_sequences"
+default-run="back_to_sequences"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,3 +13,10 @@ which = "4.0.2"
 glob = "0.3.0"
 fxread = "0.2"
 
+[[bin]]
+name = "back_to_sequences"
+path = "src/main.rs"
+    
+[[bin]]
+name = "validation"
+path = "src/validate_kmers.rs"
