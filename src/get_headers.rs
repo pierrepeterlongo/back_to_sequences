@@ -57,6 +57,8 @@ pub fn get_headers (sub_matches: &ArgMatches) {
     cmd.arg(&outheaders);
     cmd.arg("-n");
     cmd.arg("kmers");
+    cmd.arg("-z");
+    cmd.arg("3"); // use the findere approach
     cmd.arg("-r");
     cmd.arg("0.0001");
     cmd.arg("--format");

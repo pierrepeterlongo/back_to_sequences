@@ -16,6 +16,7 @@ pub fn index_kmers(sub_matches: &ArgMatches) {
     let outkmers = sub_matches.get_one::<String>("OUT_INDEX").map(|s| s.clone()).unwrap();
     
     let k = sub_matches.get_one::<u32>("K").map(|s| s.clone()).unwrap();
+    let s = k - 3; // usees the findere approach 
     let t = sub_matches.get_one::<u32>("T").map(|s| s.clone()).unwrap();
 
     let bloom_size = sub_matches.get_one::<u64>("BLOOMSIZE").map(|s| s.clone()).unwrap();
@@ -52,7 +53,7 @@ pub fn index_kmers(sub_matches: &ArgMatches) {
     cmd.arg("--register-as");
     cmd.arg("kmers");
     cmd.arg("-k");
-    cmd.arg(&k.to_string());
+    cmd.arg(&s.to_string());
     cmd.arg("-t");
     cmd.arg(&t.to_string());
     cmd.arg("--bloom-size");

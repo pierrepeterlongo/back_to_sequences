@@ -2,8 +2,7 @@ use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::Write;
-use std::io::{self, BufRead, BufReader};
-// use std::process::exit;
+use std::io::{self};
 use fxread::initialize_reader;
 
 fn main() {
