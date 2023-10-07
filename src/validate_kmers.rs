@@ -1,28 +1,64 @@
-use std::collections::HashSet;
-use std::env;
+use std::collections::HashMap;
+use std::{env, fs};
 use std::fs::File;
 use std::io::Write;
 use std::io::{self};
+use clap::ArgMatches;
 use fxread::initialize_reader;
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 4 {
-        eprintln!("Usage: {} <kmers.fasta> <reads.fasta> <output.fasta>", args[0]);
-        return;
+fn validate_non_empty_file(in_file: String) {
+    // check that inkmers is a non empty file:
+    // Attempt to get metadata for the file
+    if let Ok(metadata) = fs::metadata(in_file.clone()) {
+        // Check if the file exists
+        if ! metadata.is_file() {
+            panic!("{:#} exists, but it's not a file.", in_file);
+        }
+    } else {
+        panic!("The {} file does not exist or there was an error checking its existence.", in_file);
     }
+}
 
-    let kmer_file = &args[1];
-    let reads_file = &args[2];
-    let out_reads_file = &args[3];
+pub fn validate_kmers(sub_matches: &ArgMatches) -> std::io::Result<()> {
+    let kmer_file = sub_matches.get_one::<String>("IN_KMERS").map(|s| s.clone()).unwrap();
+    let reads_file = sub_matches.get_one::<String>("INFASTA").map(|s| s.clone()).unwrap();
+    let out_reads_file = sub_matches.get_one::<String>("OUTFASTA").map(|s| s.clone()).unwrap();
+    let out_kmers_file = sub_matches.get_one::<String>("OUTKMERS").map(|s| s.clone()).unwrap();
+  
+    // check that inkmers and reads_file are non empty files:
+    validate_non_empty_file(kmer_file.clone());
+    validate_non_empty_file(reads_file.clone());
+
 
     match index_kmers(kmer_file) {
-        Ok((kmer_set, kmer_size)) => {
-            let _ = read_fasta_file(reads_file, &kmer_set, kmer_size, out_reads_file);
+        Ok((mut kmer_set, kmer_size)) => {
+            let _ = read_fasta_file(reads_file, &mut kmer_set, kmer_size, out_reads_file.clone());
             println!("Done, results are in file {}", out_reads_file);
+            
+
+            // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
+            if out_kmers_file.len() > 0 {
+                
+                // prints all kmers from kmer_set that have a count > 0
+                let mut output = File::create(out_kmers_file.clone())?;
+                // let mut output = File::create(out_kmers_file);
+                for (kmer, count) in kmer_set.iter() {
+                    if *count > 0 {
+                        output.write_all(kmer.as_bytes())?;
+                        output.write_all(b" ")?;
+                        output.write_all(count.to_string().as_bytes())?;
+                        output.write_all(b"\n")?;
+                        // println!("{} {}", kmer, count);
+                    }
+                }
+            println!("kmers with their number of occurrences in the original reads are in file {}", out_kmers_file);
+            }
         }
+
         Err(err) => eprintln!("Error indexing kmers: {}", err),
     }
+    Ok(())
+
 }
 
 fn reverse_complement(kmer: &str) -> String {
@@ -47,8 +83,9 @@ fn canonical(kmer: &str) -> String {
     }
 }
 
-fn index_kmers(file_name: &str) -> Result<(HashSet<String>, usize), io::Error> {
-    let mut kmer_set = HashSet::new();
+fn index_kmers(file_name: String) -> Result<(HashMap<String, i32>, usize), io::Error> {
+    let mut kmer_set: HashMap<String, i32> = HashMap::new();
+    // let mut kmer_set: HashSet<String> = HashSet::new();
     let mut kmer_size = 0;
 
 
@@ -63,18 +100,14 @@ fn index_kmers(file_name: &str) -> Result<(HashSet<String>, usize), io::Error> {
         if kmer_size == 0 {
             kmer_size = string_acgt_sequence.len();
         }
-        kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()));
+        kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
     }
     println!("Indexed {} kmers, each of size {}", kmer_set.len(), kmer_size);
-    // println!("Kmer size: {}", kmer_size);
-    // // prints all kmers in the set
-    // for kmers in &kmer_set {
-    //     println!("{}", kmers);
-    // }
+    
     Ok((kmer_set, kmer_size))
 }
 
-fn read_fasta_file(file_name: &str, kmer_set: &HashSet<String>, kmer_size: usize, out_fasta: &str) -> std::io::Result<()>{
+fn read_fasta_file(file_name: String, kmer_set:  &mut HashMap<String, i32>, kmer_size: usize, out_fasta: String) -> std::io::Result<()>{
     
     let mut output = File::create(out_fasta)?;
     let reader = initialize_reader(&file_name).unwrap();
@@ -95,33 +128,21 @@ fn read_fasta_file(file_name: &str, kmer_set: &HashSet<String>, kmer_size: usize
             output.write_all(line)?;
             output.write_all(b"\n")?;
         }
-
-        // println!("{} {}\n{}", header, count_shared_kmers(kmer_set, &record_as_string, kmer_size), record_as_string);
     }
-    
-
-    // let file = File::open(file_name)?;
-    // let reader = BufReader::new(file);
-
-
-    // for line in reader.lines() {
-    //     let line = line?;   
-    //     if !line.is_empty() && !line.starts_with('>') {
-    //         // prints the number of shared kmers 
-    //         println!("For read '{}', number of shared kmers: {}", line, count_shared_kmers(kmer_set, &line, kmer_size));
-    //     }
-    // }
     Ok(())
 }
 
-fn count_shared_kmers(kmer_set: &HashSet<String>, read: &str, kmer_size: usize) -> usize {
+fn count_shared_kmers(kmer_set: &mut HashMap<String, i32>, read: &str, kmer_size: usize) -> usize {
     let mut shared_kmers_count = 0;
 
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
         let canonical_kmer = canonical(&kmer.to_ascii_uppercase());
-        if kmer_set.contains(&canonical_kmer){
+        if kmer_set.contains_key(&canonical_kmer){
             shared_kmers_count += 1;
+            // kmer_set[&canonical_kmer] += 1;
+            // kmer_set.insert(canonical_kmer, 1 + kmer_set[&canonical_kmer] );
+            *kmer_set.get_mut(&canonical_kmer).unwrap() += 1;
         }
     }
     shared_kmers_count

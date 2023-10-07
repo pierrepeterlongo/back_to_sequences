@@ -17,6 +17,6 @@ fxread = "0.2"
 name = "back_to_sequences"
 path = "src/main.rs"
     
-[[bin]]
-name = "validation"
-path = "src/validate_kmers.rs"
+#[[bin]]
+#name = "validation"
+#path = "src/validate_kmers.rs"

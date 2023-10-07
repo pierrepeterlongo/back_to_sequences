@@ -2,12 +2,18 @@ use clap::{arg, command, Command, value_parser};
 
 mod get_km_paths;
 use get_km_paths::get_km_paths;
+
 mod index_kmers;
 use index_kmers::index_kmers;
+
 mod get_headers;
 use get_headers::get_headers;
+
 mod to_reads;
 use to_reads::to_reads;
+
+mod validate_kmers;
+use validate_kmers::validate_kmers;
 
 ///////////////////////// MAIN /////////////////////////
 
@@ -62,7 +68,7 @@ fn main() {
                 arg!([BLOOMSIZE])
                     .value_parser(value_parser!(u64))
                     .long("bloom_size")
-                    .default_value("30000000")
+                    .default_value("10000000")
                     .help("size of the bloom filter in bits")
             )
             .about("Index kmers")
@@ -212,6 +218,39 @@ fn main() {
                 )
             .about("From selected headers to reads")
         )
+        .subcommand(
+            Command::new("exact_count")
+            .arg(
+                arg!([IN_KMERS])
+                    .value_parser(value_parser!(String))
+                    .long("in_kmers")
+                    .required(true)
+                    .help("Input fasta file containing the original kmers")
+            )
+            .arg(
+                arg!([INFASTA])
+                    .value_parser(value_parser!(String))
+                    .long("in_fasta")
+                    .required(true)
+                    .help("Input fasta file containing the already filtered sequences")
+            )
+            .arg(
+                arg!([OUTFASTA])
+                    .value_parser(value_parser!(String))
+                    .long("out_fasta")
+                    .required(true)
+                    .help("Output fasta file containing the filtered sequences, adding their exact count")
+            )
+            .arg(
+                arg!([OUTKMERS])
+                    .value_parser(value_parser!(String))
+                    .long("out_counted_kmers")
+                    .required(false)
+                    .default_value("")
+                    .help("If specified, Output a text file containing each (canonical) kmer found at least once in the read, with their number of occurrences in the reads. Exact values.")
+            )
+            .about("From filtered reads, find their exact number of shared kmers with the original kmers.")
+        )
         .get_matches();
     
     match matches.subcommand() {
@@ -228,8 +267,12 @@ fn main() {
         }
         ,
         Some(("query_sequences", sub_matches)) => {
-            get_headers(&sub_matches);  // to finish as OUTHEADERS is not set
-            to_reads(&sub_matches)      // to finish as INHEADERS is not set
+            get_headers(&sub_matches);  
+            to_reads(&sub_matches)      
+        }
+        ,
+        Some(("exact_count", sub_matches)) => {
+            let _ = validate_kmers(&sub_matches);      // to finish as INHEADERS is not set
         }
         _ => unreachable!("Exhausted list of subcommands and subcommand_required prevents `None`"),
     }

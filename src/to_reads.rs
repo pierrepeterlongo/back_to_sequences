@@ -134,8 +134,6 @@ pub fn to_reads(sub_matches: &ArgMatches) {
     let threshold= sub_matches.get_one::<f32>("THRESHOLD").map(|s| s.clone()).unwrap();
     let indexed_kmers_json_file: String = sub_matches.get_one::<String>("INKMERS").map(|s| s.clone()).unwrap() + "/index.json";
     let ksize = extract_kmer_size(&indexed_kmers_json_file);
-    // prints the ksize 
-    // println!("kmer size: {}", ksize);
     let map = get_non_empty_headers(inheaders, threshold);
     let _ = output_reads (map, infasta, outfasta, ksize);
 }

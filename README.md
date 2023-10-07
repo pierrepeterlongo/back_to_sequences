@@ -100,18 +100,24 @@ back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index ind
 
 You may now verify the exactness or the overestimations using: 
 ```
-cargo run --bin validation kmers.fasta filtered_reads.fasta validation.fasta
+back_to_sequences exact_count --in_kmers kmers.fasta --in_fasta filtered_reads.fasta --out_fasta filtered_reads_exact.fasta [--out_counted_kmers counted_kmers.txt]
 ```
 
-The `validation.fasta` file is the same as `filtered_reads.fasta`, except that each head contains an additional integer value, being the exact number of shared kmers with the `kmers.fasta` file.
+The `filtered_reads_exact.fasta` file is the same as `filtered_reads.fasta`, except that each head contains an additional integer value, being the exact number of shared kmers with the original `kmers.fasta` file.
+If the `--out_counted_kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `kmers.fasta` the number of times it was found in `filtered_reads.fasta` (displays only kmers whose counts are higher than 0).
 
-Example of a header in `validation.fasta`:
+Example of a header in `filtered_reads_exact.fasta`:
 ```
 >sequence453 0.003968254 1 1
 CGGTTCGAGGCTGGCCTGAGCCACCGTGCCTAA...
 ```
 The first two values (0.003968254 1) are those already computed by kmer2sequences. The third value (1) is the exact number of shared kmers. In this case the estimation is perfect. 
 
+Example of a line in `counted_kmers.txt`:
+```
+CGTCATTTCCTGGGTCACAGTGAACGGACCC 1
+```
+Kmer `CGTCATTTCCTGGGTCACAGTGAACGGACCC` occurs once in `filtered_reads.fasta`.
 
 
 ## kmindex and kmtricks compilation note for mac os users.
