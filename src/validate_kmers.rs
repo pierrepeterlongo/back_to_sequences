@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::{env, fs};
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::io::{self};
@@ -32,8 +32,8 @@ pub fn validate_kmers(sub_matches: &ArgMatches) -> std::io::Result<()> {
 
     match index_kmers(kmer_file) {
         Ok((mut kmer_set, kmer_size)) => {
-            let _ = read_fasta_file(reads_file, &mut kmer_set, kmer_size, out_reads_file.clone());
-            println!("Done, results are in file {}", out_reads_file);
+            let _ = count_kmers_in_fasta_file(reads_file, &mut kmer_set, kmer_size, out_reads_file.clone());
+            println!("Filtered reads with exact kmer count are in file {}", out_reads_file);
             
 
             // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
@@ -48,7 +48,6 @@ pub fn validate_kmers(sub_matches: &ArgMatches) -> std::io::Result<()> {
                         output.write_all(b" ")?;
                         output.write_all(count.to_string().as_bytes())?;
                         output.write_all(b"\n")?;
-                        // println!("{} {}", kmer, count);
                     }
                 }
             println!("kmers with their number of occurrences in the original reads are in file {}", out_kmers_file);
@@ -107,7 +106,7 @@ fn index_kmers(file_name: String) -> Result<(HashMap<String, i32>, usize), io::E
     Ok((kmer_set, kmer_size))
 }
 
-fn read_fasta_file(file_name: String, kmer_set:  &mut HashMap<String, i32>, kmer_size: usize, out_fasta: String) -> std::io::Result<()>{
+fn count_kmers_in_fasta_file(file_name: String, kmer_set:  &mut HashMap<String, i32>, kmer_size: usize, out_fasta: String) -> std::io::Result<()>{
     
     let mut output = File::create(out_fasta)?;
     let reader = initialize_reader(&file_name).unwrap();

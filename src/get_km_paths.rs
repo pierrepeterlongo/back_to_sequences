@@ -1,5 +1,5 @@
 use which::which;
-use clap::{ArgMatches};
+use clap::ArgMatches;
 
 // get the paths of kmtricks and kmindex from arguments and environment variables
 pub fn get_km_paths(sub_matches: &ArgMatches) -> (String, String) {

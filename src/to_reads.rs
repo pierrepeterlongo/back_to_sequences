@@ -9,6 +9,8 @@ use glob::glob;
 
 use clap::ArgMatches;
 
+use crate::Z;
+
 
 
 
@@ -118,7 +120,7 @@ fn extract_kmer_size(indexed_kmers_json_file: &String) -> usize {
                 if key.contains("smer_size"){//} == "\"smer_size\"" {
                     let value = iter.next().unwrap().trim();
                     // println!("value: {}", value);
-                    return value.parse::<usize>().unwrap();
+                    return value.parse::<usize>().unwrap()+Z; // +Z is for the findere approach
                 }
             }
         }

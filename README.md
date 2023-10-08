@@ -99,7 +99,7 @@ back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index ind
 ```
 
 You may now verify the exactness or the overestimations using: 
-```
+```bash
 back_to_sequences exact_count --in_kmers kmers.fasta --in_fasta filtered_reads.fasta --out_fasta filtered_reads_exact.fasta [--out_counted_kmers counted_kmers.txt]
 ```
 

@@ -1,5 +1,5 @@
 use clap::ArgMatches;
-use crate::get_km_paths;
+use crate::{get_km_paths, Z};
 use std::fs;
 use std::process::Command as RunCommand;
 
@@ -13,7 +13,7 @@ pub fn get_headers (sub_matches: &ArgMatches) {
     let index_kmers = sub_matches.get_one::<String>("INKMERS").map(|s| s.clone()).unwrap();
     let infasta = sub_matches.get_one::<String>("INFASTA").map(|s| s.clone()).unwrap();
     let outheaders = sub_matches.get_one::<String>("HEADERS").map(|s| s.clone()).unwrap();
-    let t = sub_matches.get_one::<u32>("T").map(|s| s.clone()).unwrap();
+    let t = sub_matches.get_one::<usize>("T").map(|s| s.clone()).unwrap();
 
     // check that index_kmers is a non empty directory:
     // Attempt to get metadata for the file
@@ -41,11 +41,10 @@ pub fn get_headers (sub_matches: &ArgMatches) {
     let mut cmd = RunCommand::new("rm");
     cmd.arg("-rf");
     cmd.arg(&outheaders);
-    let _ = cmd.output().expect("failed to execute process");
 
-    // run kmindex
-    // # create the kmindex command: 
-    // kmindex_cmd="${current_dir_path}/bin/kmindex query --index ${indexed_kmers_file_path} -q ${queried_sequences_file_path} -o ${output_file_path} -n kmers -r 0.0001 --format matrix"
+    let printablecmd = format!("{:?}", cmd).replace("\" \"", " ").replace("\"", "");
+    println!("Executing {:?}", printablecmd);
+    let _ = cmd.output().expect("failed to execute process");
 
     let mut cmd = RunCommand::new(&kmindex_path);
     cmd.arg("query");
@@ -58,7 +57,7 @@ pub fn get_headers (sub_matches: &ArgMatches) {
     cmd.arg("-n");
     cmd.arg("kmers");
     cmd.arg("-z");
-    cmd.arg("3"); // use the findere approach
+    cmd.arg(&Z.to_string()); // use the findere approach
     cmd.arg("-r");
     cmd.arg("0.0001");
     cmd.arg("--format");
@@ -66,7 +65,8 @@ pub fn get_headers (sub_matches: &ArgMatches) {
     cmd.arg("-t");
     cmd.arg(&t.to_string());
 
-    println!("kmindex command: {:?}", cmd);
+    let printablecmd = format!("{:?}", cmd).replace("\" \"", " ").replace("\"", "");
+    println!("Executing {:?}", printablecmd);
     let _ = cmd.output().expect("failed to execute process");
 
     println!("kmindex done, the output directory is: {:?}", outheaders);

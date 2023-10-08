@@ -1,6 +1,6 @@
-use clap::{ArgMatches};
+use clap::ArgMatches;
 
-use crate::get_km_paths;
+use crate::{get_km_paths, Z};
 use std::fs;
 use std::process::Command as RunCommand;
 
@@ -15,9 +15,9 @@ pub fn index_kmers(sub_matches: &ArgMatches) {
     let inkmers = sub_matches.get_one::<String>("IN_KMERS").map(|s| s.clone()).unwrap();
     let outkmers = sub_matches.get_one::<String>("OUT_INDEX").map(|s| s.clone()).unwrap();
     
-    let k = sub_matches.get_one::<u32>("K").map(|s| s.clone()).unwrap();
-    let s = k - 3; // usees the findere approach 
-    let t = sub_matches.get_one::<u32>("T").map(|s| s.clone()).unwrap();
+    let k = sub_matches.get_one::<usize>("K").map(|s| s.clone()).unwrap();
+    let s = k - Z; // usees the findere approach 
+    let t = sub_matches.get_one::<usize>("T").map(|s| s.clone()).unwrap();
 
     let bloom_size = sub_matches.get_one::<u64>("BLOOMSIZE").map(|s| s.clone()).unwrap();
 
@@ -39,6 +39,9 @@ pub fn index_kmers(sub_matches: &ArgMatches) {
     cmd.arg("-rf");
     cmd.arg(&outkmers);
     cmd.arg(&dir_name);
+    
+    let printablecmd = format!("{:?}", cmd).replace("\" \"", " ").replace("\"", "");
+    println!("Executing {:?}", printablecmd);
     let _ = cmd.output().expect("failed to execute process");
 
     // run kmindex
@@ -63,8 +66,9 @@ pub fn index_kmers(sub_matches: &ArgMatches) {
     cmd.arg("--km-path");
     cmd.arg(&kmtricks_path);
 
-    println!("Executing {:?}", cmd);
+    // show a clean version of the cmd (replacing \" \" by a unique space)
+    let printablecmd = format!("{:?}", cmd).replace("\" \"", " ").replace("\"", "");
+    println!("Executing {:?}", printablecmd);
     let _ = cmd.output().expect("failed to execute process");
-    // show the command stdout
     println!("kmindex done, the output directory is: {:?}", outkmers);
 }

@@ -15,6 +15,11 @@ use to_reads::to_reads;
 mod validate_kmers;
 use validate_kmers::validate_kmers;
 
+
+///////////////////////// CONSTANTS /////////////////////////
+/// Constant for the findere approach: z
+const Z: usize = 0;
+
 ///////////////////////// MAIN /////////////////////////
 
 fn main() {
@@ -52,14 +57,14 @@ fn main() {
             )
             .arg(
                 arg!([K])
-                    .value_parser(value_parser!(u32))
+                    .value_parser(value_parser!(usize))
                     .short('k')
                     .default_value("31")
                     .help("kmer size")
             )
             .arg(
                 arg!([T])
-                    .value_parser(value_parser!(u32))
+                    .value_parser(value_parser!(usize))
                     .short('t')
                     .default_value("8")
                     .help("kmindex number of threads")
@@ -126,7 +131,7 @@ fn main() {
             )
             .arg(
                 arg!([T])
-                    .value_parser(value_parser!(u32))
+                    .value_parser(value_parser!(usize))
                     .short('t')
                     .default_value("8")
                     .help("kmindex number of threads")
@@ -171,7 +176,7 @@ fn main() {
             )
             .arg(
                 arg!([T])
-                    .value_parser(value_parser!(u32))
+                    .value_parser(value_parser!(usize))
                     .short('t')
                     .default_value("8")
                     .help("kmindex number of threads")
