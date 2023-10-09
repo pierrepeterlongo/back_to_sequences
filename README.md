@@ -23,6 +23,7 @@ GAATTGTGATACTTGCTGCCGTTAACACAGCCACTCACCTCTGTACACCACACTGGTCCGTGGAGGGTGACAAGCATAAC
 ## Install:
 ```bash
 git clone https://github.com/pierrepeterlongo/kmer2sequences.git
+cd kmer2sequences
 cargo install --path . --locked
 ```
 
