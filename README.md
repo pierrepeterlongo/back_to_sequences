@@ -35,21 +35,23 @@ For compiling with mac, cf the note at the end of the file.
 
 ## Quick benchmark
 Reproducible by running `benchmark.sh` in the scripts folder.
-Results obtained on a macbook pro Apple M2 Pro, 16Go RAM 
-* Indexed: one million kmers of length 31 (takes 2s)
+Results were obtained on a macbook pro Apple M2 Pro, 16Go RAM 
+* Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB.
 * Queried: from 1 to 100 million reads, each of average length 350
 * `Nb filtered reads` are the number of reads containaing at least one kmer
 
-| Number of reads | Filtering Time (s) |  Exact_count Time (s) | Nb filtered reads | max RAM |
+| Number of reads | Filtering Time (s) |  Exact_count Time (s) | Nb filtered reads | max RAM (GB) |
 |-----------------|-----|-----|---|
-| 1               | <1  | <1    | 0 | 5.47 kb |
-| 10              | <1   | <1   | 1 | 6.31 kb| 
-| 100             | <1   | <1  | 13 | 	14.9 kb |
-| 1,000           | <1  |  <1  | 169 | 37.3 kb |
-| 10,000          | 2.5  |  <1	| 1596 | 101.6 kb |
-| 100,000         | 19.0  | 2.8	 | 16007 | 0.74 Mb |
-| 1,000,000       | 181.1  | 21.3| 161054	 | 6.58 Mb |
-| 10,000,000       | 2303  | 205 | 1606177	 | 64.5 Mb |
+| 1               | 0m1.219s  | 0m1.807s    | 0 | 0.12 |
+| 10              | 0m1.229s   | 0m1.804s   | 1 | 0.12| 
+| 100             | 0m1.251s   | 0m1.856s  | 17 | 0.12|
+| 1,000           | 0m1.264s  |  0m1.854s  | 169 | 0.12 |
+| 10,000          | 0m1.340s  |  0m2.487s	| 1,596 | 0.12 |
+| 100,000         | 0m2.492s  | 0m4.901s	 | 16,007 | 0.59|
+| 1,000,000       | 0m15.364s  | 0m24.710s| 160,589	 | 7.44 |
+| 10,000,000       | 3m2.291s  | 3m34.228s | 1,601,178	 | 64.5 |
+| 100,000,000       | 42m50.293s | 35m31 | 16,032,079 | 645 |
+
 
 ## complete example: 
 ### For testing: generate random reads and extract some of their kmers: 
