@@ -12,13 +12,13 @@ use get_headers::get_headers;
 mod to_reads;
 use to_reads::to_reads;
 
-mod validate_kmers;
-use validate_kmers::validate_kmers;
+mod exact_count;
+use exact_count::validate_kmers;
 
 
 ///////////////////////// CONSTANTS /////////////////////////
 /// Constant for the findere approach: z
-const Z: usize = 0;
+const Z: usize = 3;
 
 ///////////////////////// MAIN /////////////////////////
 
@@ -253,6 +253,13 @@ fn main() {
                     .required(false)
                     .default_value("")
                     .help("If specified, Output a text file containing each (canonical) kmer found at least once in the read, with their number of occurrences in the reads. Exact values.")
+            )
+            .arg(
+                arg!([K])
+                    .value_parser(value_parser!(usize))
+                    .short('k')
+                    .default_value("31")
+                    .help("kmer size")
             )
             .about("From filtered reads, find their exact number of shared kmers with the original kmers.")
         )

@@ -51,14 +51,18 @@ Results obtained on a macbook pro Apple M2 Pro, 16Go RAM
 ## complete example: 
 ### For testing: generate random reads and extract some of their kmers: 
 ```bash
-# Generate 100000 reads of average length 500 and minimum length 100
-python scripts/generate_random_fasta.py 100000 500 100 reads.fasta
+# Generate 1 reference sequence of random length 50000 and minimum length 100
+python scripts/generate_random_fasta.py 1 50000 100 ref_seq.fasta
 
-# Extract 100 random kmers of length 31 from the reads
-python3 scripts/extract_random_kmers_from_a_fasta_file.py --canonical reads.fasta 31 100 kmers.fasta
+# Extract 1000 random "reads", each of length in [100;500] from the reference sequence
+python3 scripts/extract_random_sequences.py --input ref_seq.fasta --min_size 100 --max_size 500 --num 1000 --output reads.fasta 
+
+
+# From those reads, extract 500 random sequence containing the kmers. Those kmers are stored in sequences of length in [31;70]
+python3 scripts/extract_random_sequences.py --input reads.fasta --min_size 31 --max_size 70 --num 500 --output compacted_kmers.fasta
 
 # Create the file of file, used by kmindex, containing the kmers. D is simply a prefix. 
-echo D:kmers.fasta > fof.txt
+echo ref_set:compacted_kmers.fasta > fof.txt
 ```
 
 ### Index kmers and extract the reads containing the kmers:
@@ -85,7 +89,7 @@ back_to_sequences query_sequences_get_headers --in_sequences reads.fasta --in_km
 back_to_sequences query_sequences_to_reads --in_headers headers --in_fasta reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --threshold 0.0
 ```
 
-That's all, the `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `kmers.fasta`.
+That's all, the `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `compacted_kmers.fasta`.
 The headers of each read is the same as in `reads.fasta`, plus the ratio of shared kmers.
 
 ## Validation 
@@ -100,11 +104,11 @@ back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index ind
 
 You may now verify the exactness or the overestimations using: 
 ```bash
-back_to_sequences exact_count --in_kmers kmers.fasta --in_fasta filtered_reads.fasta --out_fasta filtered_reads_exact.fasta [--out_counted_kmers counted_kmers.txt]
+back_to_sequences exact_count --in_kmers compacted_kmers.fasta --in_fasta filtered_reads.fasta --out_fasta filtered_reads_exact.fasta -k 31 --out_counted_kmers counted_kmers.txt
 ```
 
-The `filtered_reads_exact.fasta` file is the same as `filtered_reads.fasta`, except that each head contains an additional integer value, being the exact number of shared kmers with the original `kmers.fasta` file.
-If the `--out_counted_kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `kmers.fasta` the number of times it was found in `filtered_reads.fasta` (displays only kmers whose counts are higher than 0).
+The `filtered_reads_exact.fasta` file is the same as `filtered_reads.fasta`, except that each head contains an additional integer value, being the exact number of shared kmers with the original `compacted_kmers.fasta` file.
+If the `--out_counted_kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `compacted_kmers.fasta` the number of times it was found in `filtered_reads.fasta` (displays only kmers whose counts are higher than 0).
 
 Example of a header in `filtered_reads_exact.fasta`:
 ```

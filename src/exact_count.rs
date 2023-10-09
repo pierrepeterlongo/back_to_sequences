@@ -24,13 +24,14 @@ pub fn validate_kmers(sub_matches: &ArgMatches) -> std::io::Result<()> {
     let reads_file = sub_matches.get_one::<String>("INFASTA").map(|s| s.clone()).unwrap();
     let out_reads_file = sub_matches.get_one::<String>("OUTFASTA").map(|s| s.clone()).unwrap();
     let out_kmers_file = sub_matches.get_one::<String>("OUTKMERS").map(|s| s.clone()).unwrap();
+    let kmer_size = sub_matches.get_one::<usize>("K").map(|s| s.clone()).unwrap();
   
     // check that inkmers and reads_file are non empty files:
     validate_non_empty_file(kmer_file.clone());
     validate_non_empty_file(reads_file.clone());
 
 
-    match index_kmers(kmer_file) {
+    match index_kmers(kmer_file, kmer_size) {
         Ok((mut kmer_set, kmer_size)) => {
             let _ = count_kmers_in_fasta_file(reads_file, &mut kmer_set, kmer_size, out_reads_file.clone());
             println!("Filtered reads with exact kmer count are in file {}", out_reads_file);
@@ -82,24 +83,22 @@ fn canonical(kmer: &str) -> String {
     }
 }
 
-fn index_kmers(file_name: String) -> Result<(HashMap<String, i32>, usize), io::Error> {
+fn index_kmers(file_name: String, kmer_size: usize) -> Result<(HashMap<String, i32>, usize), io::Error> {
     let mut kmer_set: HashMap<String, i32> = HashMap::new();
-    // let mut kmer_set: HashSet<String> = HashSet::new();
-    let mut kmer_size = 0;
-
 
     let reader = initialize_reader(&file_name).unwrap();
     for record in reader {
-        // let header = record.id_str_checked().unwrap().to_string();
         let record_as_string = record.as_str_checked().unwrap().trim().as_bytes();
         let mut iter = record_as_string.split(|&x| x == b'\n');
         let _ = iter.next().unwrap();
         let acgt_sequence = iter.next().unwrap().to_owned();
         let string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8");
-        if kmer_size == 0 {
-            kmer_size = string_acgt_sequence.len();
+        // for each kmer of the sequence, insert it in the kmer_set
+        for i in 0..(string_acgt_sequence.len() - kmer_size + 1) {
+            let kmer = &string_acgt_sequence[i..(i + kmer_size)];
+            kmer_set.insert(canonical(&&kmer.to_ascii_uppercase()), 0);
         }
-        kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
+        // kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
     }
     println!("Indexed {} kmers, each of size {}", kmer_set.len(), kmer_size);
     
