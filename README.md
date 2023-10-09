@@ -36,18 +36,20 @@ For compiling with mac, cf the note at the end of the file.
 ## Quick benchmark
 Reproducible by running `benchmark.sh` in the scripts folder.
 Results obtained on a macbook pro Apple M2 Pro, 16Go RAM 
-* Indexed: 100,000 kmers of length 31 (takes 2s)
-* Queried: from 1 to 1 million reads, each of average length 500
+* Indexed: one million kmers of length 31 (takes 2s)
+* Queried: from 1 to 100 million reads, each of average length 350
+* `Nb filtered reads` are the number of reads containaing at least one kmer
 
-| Number of reads | Time (s) |  max RAM |
-|-----------------|----------|---|
-| 1               | 0.2      |5.47 kb |
-| 10              | 0.2      | 6.31 kb| 
-| 100             | 0.2      |	14.9 kb |
-| 1,000           | 0.2      | 37.3 kb |
-| 10,000          | 0.2    	 | 101.6 kb |
-| 100,000         | 1.2    	 | 0.74 Mb |
-| 1,000,000       | 15.0   	 | 6.58 Mb |
+| Number of reads | Filtering Time (s) |  Exact_count Time (s) | Nb filtered reads | max RAM |
+|-----------------|-----|-----|---|
+| 1               | <1  | <1    | 0 | 5.47 kb |
+| 10              | <1   | <1   | 1 | 6.31 kb| 
+| 100             | <1   | <1  | 13 | 	14.9 kb |
+| 1,000           | <1  |  <1  | 169 | 37.3 kb |
+| 10,000          | 2.5  |  <1	| 1596 | 101.6 kb |
+| 100,000         | 19.0  | 2.8	 | 16007 | 0.74 Mb |
+| 1,000,000       | 181.1  | 21.3| 161054	 | 6.58 Mb |
+| 10,000,000       | 2303  | 205 | 1606177	 | 64.5 Mb |
 
 ## complete example: 
 ### For testing: generate random reads and extract some of their kmers: 
