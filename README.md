@@ -8,25 +8,40 @@ Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta
 Each sequence is output with its original header + the ratio of shared kmers + the number of shared kmers.:
 
 ```
->original_header 0.011494253 1
+>original_header 0.011494253 1 1
 GAATTGTGATACTTGCTGCCGTTAACACAGCCACTCACCTCTGTACACCACACTGGTCCGTGGAGGGTGACAAGCATAACATAGTTCGTATGTGTTGCACGCCCT
 ```
 
 **key idea**: 
+`kmer2sequences` works whithin three phases:
 
 1. kmers (even if they are few) are indexed using kmindex. 
+2. Then reads are queried against the index, again using kmindex. This step enables to estimate for each read (with a non null false positive probability) the number of kmers it shares with the indexed kmers. The output of this step looks like this: 
 
-2. Then reads are queried against the index, again using kmindex.
-
-3. Finally, the reads are extracted from the fasta file, given the kmindex output (that contains only headers)
-   It is possible to set up a threshold on the ration of shared kmers between the read and the query.
+```
+>39942 0.14563107 15
+CGATTTACCCCTACCTATCCCCAACTACAACCGTGAACGTTACTGAACTCCCTTTGGTCTGCATGAAACTGGGGACTTATTGGTGGTATTGAATATTAACTTCTCTCGCATTGATATGGGCACTCCATAGCGA
+```
+the read id 39942 shares ~14.5% of its kmers (15 kmers) with the indexed kmers.
    
-   There are two commands to use: 
+3. If needed: among reads that share at least one kmer with the references, an exact count can be applied to avoid any false positive. 
+The output of this step looks like this: 
 
-4. `back_to_sequences index_kmers`: indexes the kmers
+```
+...
+>39942 0.14563107 15 15
+CGATTTACCCCTACCTATCCCCAACTACAACCGTGAACGTTACTGAACTCCCTTTGGTCTGCATGAAACTGGGGACTTATTGGTGGTATTGAATATTAACTTCTCTCGCATTGATATGGGCACTCCATAGCGA
+...
+```
+the second `15` is the exact number of shared kmers.
 
-5. `back_to_sequences query_sequences`: find the sequences that contain the indexed kmers
-   A full example with options is given below.
+If requested by the user the number of occurrences of each shared kmer is provided in a text file like:
+```
+...
+CGCGCTATAGACCGTACGCTCCACCAATTAA 4
+AAGCAAGACCTACCGGCTCGTCAAAACAGAA 5
+...
+```
 
 ## Install:
 
@@ -50,10 +65,10 @@ Presented results were obtained on GenOuest platform on a node with 64 cores (12
 
 Non presented results on a macbook pro Apple M2 Pro, 32Go RAM, are almost identical.
 
-* Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB. 
+* Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB. Used 32 threads
 * Queried: from 1 to 100 million reads, each of average length 350
-  * Filtering time corresponds to the `query_sequences` subcommand.
-  * Exact_count Time corresponds to the `exact_count` sub command 
+  * Filtering time corresponds to the `query_sequences` subcommand. Used 32 threads
+  * Exact_count Time corresponds to the `exact_count` sub command Use 1 thread (Parellization of this step is not implemented yet)
 * `Nb filtered reads` are the number of reads containaing at least one kmer after the filtering step. 
 
 | Number of reads | Filtering Time | Exact_count Time | Nb filtered reads | max RAM (GB) |
@@ -65,8 +80,9 @@ Non presented results on a macbook pro Apple M2 Pro, 32Go RAM, are almost identi
 | 10,000          | 0m1s       | 0m2s         | 1,596             | 0.12         |
 | 100,000         | 0m2s       | 0m5s         | 16,007            | 0.53         |
 | 1,000,000       | 0m20s      | 0m27s        | 160,589           | 6.8         |
-| 10,000,000      | 1m45s       | 3m34s        | 1,601,178         | 21        |
-| 100,000,000     | 12m53s     | 35m31s            | 16,032,079        | 21          |
+| 10,000,000      | 1m45s       | 3m34s        | 1,601,178         | 12        |
+| 100,000,000     | 12m53s     | 35m31s            | 16,040,388        | 12          |
+| 200,000,000   | 23m30s  |  1h12m23s | 160,320,003      | 32,096,008          | 12 |
 
 ## complete example:
 
@@ -91,46 +107,37 @@ echo ref_set:compacted_kmers.fasta > fof.txt
 
 1. index the kmers: 
    
-   ```bash
-   back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
-   ```
+```bash
+back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
+```
 
-2. extract the reads containing the kmers: 
+2. extract the reads containing at least one indexed kmers: 
    
-   ```bash
-   back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
-   ```
+```bash
+back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
+```
 
-**Note:** This second step can be subdivided into two commands (for debugging purpose, or for obtaining only headers of sequences containing the kmers):
+The `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `compacted_kmers.fasta`.
+The headers of each read is the same as in `reads.fasta`, plus the estimated ratio of shared kmers and number of shared kmers.
 
-    2.1 search the kmers in the reads (finds the headers of reads continaing indexed kmers): 
+<!-- **Note:** This second step can be subdivided into two commands (for debugging purpose, or for obtaining only headers of sequences containing the kmers):
+
+2.1 search the kmers in the reads (finds the headers of reads continaing indexed kmers): 
 
 ```bash
 back_to_sequences query_sequences_get_headers --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_headers headers --kmindex_path ./bin/kmindex
 ```
 
-    2.2 back to the read sequences
+2.2 back to the read sequences
 
 ```bash
 back_to_sequences query_sequences_to_reads --in_headers headers --in_fasta reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --threshold 0.0
-```
+``` -->
 
-That's all, the `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `compacted_kmers.fasta`.
-The headers of each read is the same as in `reads.fasta`, plus the ratio of shared kmers.
-
-## Validation
+3. Exact count of shared kmers (optional): 
 
 The kmindex approach is probabilistic, as it uses a bloom filter for indexing the kmers.
-We propose a way to validate the results obtained by `kmer2sequences`, by using a second approach, based on a hash table. It requires more time and memory than `kmer2sequences`. It can be applied on the results of the filtered reads (as `kmer2sequences` does not suffer from false negative calls). 
-
-Here is a small example. Suppose you estimated the number of shared kmers using the commands above: 
-
-```bash
-back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
-back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
-```
-
-You may now verify the exactness or the overestimations using: 
+We may validate previous results, using an exact approach, based on a hash table. It requires more time and memory than the `query_sequences` subcommand. However, it is applied a subset of the original reads, being only those that it is estimated that they share at least one kmer with the indexed kmers.
 
 ```bash
 back_to_sequences exact_count --in_kmers compacted_kmers.fasta --in_fasta filtered_reads.fasta --out_fasta filtered_reads_exact.fasta -k 31 --out_counted_kmers counted_kmers.txt
@@ -139,22 +146,16 @@ back_to_sequences exact_count --in_kmers compacted_kmers.fasta --in_fasta filter
 The `filtered_reads_exact.fasta` file is the same as `filtered_reads.fasta`, except that each head contains an additional integer value, being the exact number of shared kmers with the original `compacted_kmers.fasta` file.
 If the `--out_counted_kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `compacted_kmers.fasta` the number of times it was found in `filtered_reads.fasta` (displays only kmers whose counts are higher than 0).
 
-Example of a header in `filtered_reads_exact.fasta`:
+## Summing up
+Here is a summary of the commands used in the previous example:
 
+```bash
+back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
+
+back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
+
+back_to_sequences exact_count --in_kmers compacted_kmers.fasta --in_fasta filtered_reads.fasta --out_fasta filtered_reads_exact.fasta -k 31 --out_counted_kmers counted_kmers.txt
 ```
->sequence453 0.003968254 1 1
-CGGTTCGAGGCTGGCCTGAGCCACCGTGCCTAA...
-```
-
-The first two values (0.003968254 1) are those already computed by kmer2sequences. The third value (1) is the exact number of shared kmers. In this case the estimation is perfect. 
-
-Example of a line in `counted_kmers.txt`:
-
-```
-CGTCATTTCCTGGGTCACAGTGAACGGACCC 1
-```
-
-Kmer `CGTCATTTCCTGGGTCACAGTGAACGGACCC` occurs once in `filtered_reads.fasta`.
 
 ## kmindex and kmtricks compilation note for mac os users.
 
@@ -180,6 +181,7 @@ kmindex install is a bit complex (sept 2023)
 * [x] Add a number of shared kmers per sequence instead of only their ratio 
   * [ ] ? add a threshold on the number of shared kmers
 * [ ] Parallelize the read extraction step
+* [ ] Provide a way to index all kmers (not only the canonical form)
 * [ ] Thinks about a way to adapt this to protein sequences
 * [x] Add an option to set the size of the bloom filter used by kmindex
 * [ ] Estimate the FP rate (that should be null or negligible when the number of kmer to search is lower than a few thousands)
