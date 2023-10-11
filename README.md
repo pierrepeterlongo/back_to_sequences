@@ -46,7 +46,9 @@ For compiling with mac, cf the note at the end of the file.
 ## Quick benchmark
 
 Reproducible by running `bench.sh` in the `benchs` folder.
-Results were obtained on GenOuest platform on a node with 64 cores (128 threads) Xeon 2.2 GHz (L1 = 48KB, L2 = 1.25MB, L3 = 48MB shared) with 900 GB of memory. Note that up to 1 million reads (included) results are similar using a macbook pro Apple M2 Pro, 16Go RAM 
+Presented results were obtained on GenOuest platform on a node with 64 cores (128 threads) Xeon 2.2 GHz (L1 = 48KB, L2 = 1.25MB, L3 = 48MB shared) with 900 GB of memory. 
+
+Non presented results on a macbook pro Apple M2 Pro, 32Go RAM, are almost identical.
 
 * Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB. 
 * Queried: from 1 to 100 million reads, each of average length 350
@@ -56,15 +58,15 @@ Results were obtained on GenOuest platform on a node with 64 cores (128 threads)
 
 | Number of reads | Filtering Time | Exact_count Time | Nb filtered reads | max RAM (GB) |
 | --------------- | -------------- | ---------------- | ----------------- | ------------ |
-| 1               | 0m1.219s       | 0m1.807s         | 0                 | 0.12         |
-| 10              | 0m1.229s       | 0m1.804s         | 1                 | 0.12         |
-| 100             | 0m1.251s       | 0m1.856s         | 17                | 0.12         |
-| 1,000           | 0m1.264s       | 0m1.854s         | 169               | 0.12         |
-| 10,000          | 0m1.340s       | 0m2.487s         | 1,596             | 0.12         |
-| 100,000         | 0m2.492s       | 0m4.901s         | 16,007            | 0.59         |
-| 1,000,000       | 0m15.364s      | 0m24.710s        | 160,589           | 7.44         |
-| 10,000,000      | 3m2.291s       | 3m34.228s        | 1,601,178         | 64.5         |
-| 100,000,000     | 42m50.293s     | 35m31            | 16,032,079        | 645          |
+| 1               | 0m1s       | 0m2s         | 0                 | 0.12         |
+| 10              | 0m1s       | 0m2s         | 1                 | 0.12         |
+| 100             | 0m1s       | 0m2s         | 17                | 0.12         |
+| 1,000           | 0m1s       | 0m2s         | 169               | 0.12         |
+| 10,000          | 0m1s       | 0m2s         | 1,596             | 0.12         |
+| 100,000         | 0m2s       | 0m5s         | 16,007            | 0.53         |
+| 1,000,000       | 0m20s      | 0m27s        | 160,589           | 6.8         |
+| 10,000,000      | 1m45s       | 3m34s        | 1,601,178         | 21        |
+| 100,000,000     | 12m53s     | 35m31s            | 16,032,079        | 21          |
 
 ## complete example:
 

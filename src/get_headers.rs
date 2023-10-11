@@ -60,6 +60,8 @@ pub fn get_headers (sub_matches: &ArgMatches) {
     cmd.arg(&Z.to_string()); // use the findere approach
     cmd.arg("-r");
     cmd.arg("0.0001");
+    cmd.arg("--batch-size");
+    cmd.arg("50000");
     cmd.arg("--format");
     cmd.arg("matrix");
     cmd.arg("-t");
