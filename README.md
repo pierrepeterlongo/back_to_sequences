@@ -3,22 +3,12 @@
 
 ## Description
 Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the kmers.
-Each sequence is output with its original header + the ratio of shared kmers + the number of shared kmers.:
+Each sequence that shares at least a kmer with the indexed kmeres is output with its original header + the number of shared kmers + the ratio of shared kmers:
 ```
->original_header 0.011494253 1
-GAATTGTGATACTTGCTGCCGTTAACACAGCCACTCACCTCTGTACACCACACTGGTCCGTGGAGGGTGACAAGCATAACATAGTTCGTATGTGTTGCACGCCCT
+>original_header 20 6.13
+TGGATAAAAAGGCTGACGAAAGGTCTAGCTAAAATTGTCAGGTGCTCTCAGATAAAGCAGTAAGCGAGTTGGTGTTCGCTGAGCGTCGACTAGGCAACGTTAAAGCTATTTTAGGC...
 ```
-
-**key idea**: 
- 1. kmers (even if they are few) are indexed using kmindex. 
- 2. Then reads are queried against the index, again using kmindex.
- 3. Finally, the reads are extracted from the fasta file, given the kmindex output (that contains only headers)
- It is possible to set up a threshold on the ration of shared kmers between the read and the query.
-
- There are two commands to use: 
- 1. `back_to_sequences index_kmers`: indexes the kmers
- 2. `back_to_sequences query_sequences`: find the sequences that contain the indexed kmers
- A full example with options is given below.
+In this case 20 kmers are shared with the indexed kmers. This represents 6.13% of the kmers in the sequence.
 
 ## Install:
 ```bash
@@ -26,27 +16,21 @@ git clone https://github.com/pierrepeterlongo/kmer2sequences.git
 cargo install --path . --locked
 ```
 
-## Dependencies
-* [kmindex](https://github.com/tlemane/kmindex)
-	* kmindex also requires [kmtricks](https://github.com/tlemane/kmtricks). kmtricks is provided by the conda version of kmindex, but if you install kmindex from source, you will need to install kmtricks.
-
-For compiling with mac, cf the note at the end of the file.
-
 ## Quick benchmark
+Reproducible by running `bench.sh`` in the benchs folder. Presented results were obtained on GenOuest platform on a node with 32 cores (128 threads) Xeon 2.2 GHz.
+
+Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB. Used 32 threads
+Queried: from 1 to 100 million reads, each of average length 350
 Reproducible by running `benchmark.sh` in the scripts folder.
 Results obtained on a macbook pro Apple M2 Pro, 16Go RAM 
-* Indexed: 100,000 kmers of length 31 (takes 2s)
+* Indexed: 100,000 kmers of length 31
 * Queried: from 1 to 1 million reads, each of average length 500
 
-| Number of reads | Time (s) |  max RAM |
+| Number of reads | Time  |  max RAM |
 |-----------------|----------|---|
-| 1               | 0.2      |5.47 kb |
-| 10              | 0.2      | 6.31 kb| 
-| 100             | 0.2      |	14.9 kb |
-| 1,000           | 0.2      | 37.3 kb |
-| 10,000          | 0.2    	 | 101.6 kb |
-| 100,000         | 1.2    	 | 0.74 Mb |
-| 1,000,000       | 15.0   	 | 6.58 Mb |
+| 10,000          | 1s    	 | 7 GB |
+| 100,000         | 5s    	 | 7 GB |
+| 1,000,000       | 15.0   	 | 7 GB |
 
 ## complete example: 
 ### For testing: generate random reads and extract some of their kmers: 

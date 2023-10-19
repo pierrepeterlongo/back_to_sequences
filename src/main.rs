@@ -22,8 +22,8 @@ struct Args {
     #[arg(long)]
     out_fasta_reads: String,
 
-    /// Output text file containing the kmers that occur in the reads with their number of occurrences
-    #[arg(long)]
+    /// If provided, output text file containing the kmers that occur in the reads with their number of occurrences
+    #[arg(long, default_value_t = String::from(""))]
     out_txt_kmers: String,
 
     /// Number of times to greet
