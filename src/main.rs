@@ -6,7 +6,7 @@ use exact_count::validate_kmers;
 
 ///////////////////////// MAIN /////////////////////////
 
-/// Simple program to greet a person
+/// Extract sequences that contain some kmers
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
