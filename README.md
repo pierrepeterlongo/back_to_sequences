@@ -38,7 +38,6 @@ python scripts/generate_random_fasta.py 1 50000 100 ref_seq.fasta
 # Extract 1000 random "reads", each of length in [100;500] from the reference sequence
 python3 scripts/extract_random_sequences.py --input ref_seq.fasta --min_size 100 --max_size 500 --num 1000 --output reads.fasta 
 
-
 # From those reads, extract 500 random sequence containing the kmers. Those kmers are stored in sequences of length in [31;70]
 python3 scripts/extract_random_sequences.py --input reads.fasta --min_size 31 --max_size 70 --num 500 --output compacted_kmers.fasta
 
@@ -48,12 +47,7 @@ echo ref_set:compacted_kmers.fasta > fof.txt
 
 ### Index kmers and extract the reads containing the kmers:
 
-1. index the kmers: 
-```bash
-back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31 --kmindex_path ./bin/kmindex
-```
 
-2. extract the reads containing the kmers: 
 ```bash
 back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
 ```
@@ -124,8 +118,7 @@ kmindex install is a bit complex (sept 2023)
 # TODO
 * [X] Add a validation test (04/10/2023)
 * [X] Add a number of shared kmers per sequence instead of only their ratio 
-	* [ ] ? add a threshold on the number of shared kmers
-* [ ] Parallelize the read extraction step
+* [ ] ? add a threshold on the number of shared kmers
+* [X] Parallelize the read extraction step
 * [ ] Thinks about a way to adapt this to protein sequences
 * [X] Add an option to set the size of the bloom filter used by kmindex
-* [ ] Estimate the FP rate (that should be null or negligible when the number of kmer to search is lower than a few thousands)
