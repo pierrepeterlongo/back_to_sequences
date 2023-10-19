@@ -3,8 +3,11 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::io::{self};
+use std::sync::Arc;
 use clap::ArgMatches;
 use fxread::initialize_reader;
+use atomic_counter::{RelaxedCounter, AtomicCounter};
+use rayon::prelude::*;
 
 fn validate_non_empty_file(in_file: String) {
     // check that inkmers is a non empty file:
@@ -30,10 +33,12 @@ pub fn validate_kmers(sub_matches: &ArgMatches) -> std::io::Result<()> {
     validate_non_empty_file(kmer_file.clone());
     validate_non_empty_file(reads_file.clone());
 
+    
+    match index_kmers::<RelaxedCounter>(kmer_file, kmer_size) {
 
-    match index_kmers(kmer_file, kmer_size) {
-        Ok((mut kmer_set, kmer_size)) => {
-            let _ = count_kmers_in_fasta_file(reads_file, &mut kmer_set, kmer_size, out_reads_file.clone());
+        Ok((kmer_set, kmer_size)) => {
+            let kmer_set = Arc::new(kmer_set);
+            let _ = count_kmers_in_fasta_file_par(reads_file, &kmer_set, kmer_size, out_reads_file.clone());
             println!("Filtered reads with exact kmer count are in file {}", out_reads_file);
             
 
@@ -44,11 +49,12 @@ pub fn validate_kmers(sub_matches: &ArgMatches) -> std::io::Result<()> {
                 let mut output = File::create(out_kmers_file.clone())?;
                 // let mut output = File::create(out_kmers_file);
                 for (kmer, count) in kmer_set.iter() {
-                    if *count > 0 {
-                        output.write_all(kmer.as_bytes())?;
-                        output.write_all(b" ")?;
-                        output.write_all(count.to_string().as_bytes())?;
-                        output.write_all(b"\n")?;
+                    if count.get() > 0 {
+                        write!(output, "{} {}\n", kmer, count.get())?;
+                        // output.write_all(kmer.as_bytes())?;
+                        // output.write_all(b" ")?;
+                        // output.write_all(count.get().to_string().as_bytes())?;
+                        // output.write_all(b"\n")?;
                     }
                 }
             println!("kmers with their number of occurrences in the original reads are in file {}", out_kmers_file);
@@ -83,8 +89,10 @@ fn canonical(kmer: &str) -> String {
     }
 }
 
-fn index_kmers(file_name: String, kmer_size: usize) -> Result<(HashMap<String, i32>, usize), io::Error> {
-    let mut kmer_set: HashMap<String, i32> = HashMap::new();
+/////////////////// PARALLELIZATION
+
+fn index_kmers<T:Default>(file_name: String, kmer_size: usize) -> Result<(HashMap<String, T>, usize), io::Error> {
+    let mut kmer_set = HashMap::new();
 
     let reader = initialize_reader(&file_name).unwrap();
     for record in reader {
@@ -96,7 +104,7 @@ fn index_kmers(file_name: String, kmer_size: usize) -> Result<(HashMap<String, i
         // for each kmer of the sequence, insert it in the kmer_set
         for i in 0..(string_acgt_sequence.len() - kmer_size + 1) {
             let kmer = &string_acgt_sequence[i..(i + kmer_size)];
-            kmer_set.insert(canonical(&&kmer.to_ascii_uppercase()), 0);
+            kmer_set.insert(canonical(&&kmer.to_ascii_uppercase()), Default::default()); // Atomic Counter Relaxed Counter RelaxedCounter::new(0);
         }
         // kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
     }
@@ -105,32 +113,43 @@ fn index_kmers(file_name: String, kmer_size: usize) -> Result<(HashMap<String, i
     Ok((kmer_set, kmer_size))
 }
 
-fn count_kmers_in_fasta_file(file_name: String, kmer_set:  &mut HashMap<String, i32>, kmer_size: usize, out_fasta: String) -> std::io::Result<()>{
-    
-    let mut output = File::create(out_fasta)?;
-    let reader = initialize_reader(&file_name).unwrap();
-    for record in reader {
-        let record_as_string = record.as_str_checked().unwrap().trim().as_bytes();
-        let mut iter = record_as_string.split(|&x| x == b'\n');
-        let stringheader = iter.next().unwrap();
-        let acgt_sequence = iter.next().unwrap().to_owned();
-        let string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8");
-        let nb_shared_kmers = count_shared_kmers(kmer_set, &string_acgt_sequence, kmer_size);
-        output.write_all(stringheader)?;
-        output.write_all(b" ")?;
-        output.write_all(nb_shared_kmers.to_string().as_bytes())?; 
-        output.write_all(b"\n")?;
-        output.write_all(string_acgt_sequence.as_bytes())?;
-        output.write_all(b"\n")?;
-        for line in iter {
-            output.write_all(line)?;
-            output.write_all(b"\n")?;
+fn count_kmers_in_fasta_file_par(file_name: String, kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, kmer_size: usize, out_fasta: String) -> std::io::Result<()>{
+    let output = File::create(out_fasta)?;
+    let write_lock = std::sync::Arc::new(std::sync::Mutex::new(output));
+    let (tx, rx) = std::sync::mpsc::sync_channel(1024);
+    let (_, result) = rayon::join(move ||{// lance deux threads 
+        let reader = initialize_reader(&file_name).unwrap();
+        for record in reader {
+            tx.send(record).unwrap();
         }
-    }
-    Ok(())
+    }, ||{
+        rx.into_iter().par_bridge().try_for_each(|record| -> std::io::Result<()>{
+            let record_as_string = record.as_str_checked().unwrap().trim().as_bytes(); // supprimer check ? unchecked ? 
+            let mut iter = record_as_string.split(|&x| x == b'\n');
+            let stringheader = iter.next().unwrap();
+            let acgt_sequence = iter.next().unwrap().to_owned(); // eviter copie ?
+            let string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8"); // eviter copie ?
+            let nb_shared_kmers = count_shared_kmers_par(kmer_set, &string_acgt_sequence, kmer_size);
+            if nb_shared_kmers > 0{ // read contains at least one indexed kmer
+                let mut out = write_lock.lock().unwrap();
+                out.write_all(stringheader)?;
+                out.write_all(b" ")?;
+                out.write_all(nb_shared_kmers.to_string().as_bytes())?; 
+                out.write_all(b"\n")?;
+                out.write_all(string_acgt_sequence.as_bytes())?;
+                out.write_all(b"\n")?;
+                for line in iter {
+                    out.write_all(line)?;
+                    out.write_all(b"\n")?;
+                }
+            } // end read contains at least one indexed kmer
+        Ok(())
+        }) // end of for each
+    }); // end of rayon join
+    result
 }
 
-fn count_shared_kmers(kmer_set: &mut HashMap<String, i32>, read: &str, kmer_size: usize) -> usize {
+fn count_shared_kmers_par(kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, read: &str, kmer_size: usize) -> usize {
     let mut shared_kmers_count = 0;
 
     for i in 0..(read.len() - kmer_size + 1) {
@@ -140,7 +159,10 @@ fn count_shared_kmers(kmer_set: &mut HashMap<String, i32>, read: &str, kmer_size
             shared_kmers_count += 1;
             // kmer_set[&canonical_kmer] += 1;
             // kmer_set.insert(canonical_kmer, 1 + kmer_set[&canonical_kmer] );
-            *kmer_set.get_mut(&canonical_kmer).unwrap() += 1;
+            
+            // *kmer_set.get_mut(&canonical_kmer).unwrap().add(1);
+            kmer_set[&canonical_kmer].inc();
+
         }
     }
     shared_kmers_count
