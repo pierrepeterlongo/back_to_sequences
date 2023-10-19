@@ -15,22 +15,19 @@ In this case 20 kmers are shared with the indexed kmers. This represents 6.13% o
 git clone https://github.com/pierrepeterlongo/kmer2sequences.git
 cargo install --path . --locked
 ```
-
+ 
 ## Quick benchmark
 Reproducible by running `bench.sh`` in the benchs folder. Presented results were obtained on GenOuest platform on a node with 32 cores (128 threads) Xeon 2.2 GHz.
 
-Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB. Used 32 threads
-Queried: from 1 to 100 million reads, each of average length 350
-Reproducible by running `benchmark.sh` in the scripts folder.
-Results obtained on a macbook pro Apple M2 Pro, 16Go RAM 
-* Indexed: 100,000 kmers of length 31
-* Queried: from 1 to 1 million reads, each of average length 500
+* Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB. Used 32 threads
+* Queried: from 10,000 to 100 million reads, each of average length 350
 
 | Number of reads | Time  |  max RAM |
 |-----------------|----------|---|
 | 10,000          | 1s    	 | 7 GB |
 | 100,000         | 5s    	 | 7 GB |
-| 1,000,000       | 15.0   	 | 7 GB |
+| 1,000,000       | 24.0   	 | 7 GB |
+| 10,000,000       | 15.0   	 | 7 GB |
 
 ## complete example: 
 ### For testing: generate random reads and extract some of their kmers: 
