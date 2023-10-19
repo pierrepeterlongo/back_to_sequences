@@ -5,6 +5,7 @@
 ## Description
 
 Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the kmers.
+<<<<<<< HEAD
 Each sequence is output with its original header + the ratio of shared kmers + the number of shared kmers.:
 
 ```
@@ -42,6 +43,14 @@ CGCGCTATAGACCGTACGCTCCACCAATTAA 4
 AAGCAAGACCTACCGGCTCGTCAAAACAGAA 5
 ...
 ```
+=======
+Each sequence that shares at least a kmer with the indexed kmeres is output with its original header + the number of shared kmers + the ratio of shared kmers:
+```
+>original_header 20 6.13
+TGGATAAAAAGGCTGACGAAAGGTCTAGCTAAAATTGTCAGGTGCTCTCAGATAAAGCAGTAAGCGAGTTGGTGTTCGCTGAGCGTCGACTAGGCAACGTTAAAGCTATTTTAGGC...
+```
+In this case 20 kmers are shared with the indexed kmers. This represents 6.13% of the kmers in the sequence.
+>>>>>>> dev
 
 ## Install:
 
@@ -50,6 +59,7 @@ git clone https://github.com/pierrepeterlongo/kmer2sequences.git
 cd kmer2sequences
 cargo install --path . --locked
 ```
+<<<<<<< HEAD
 
 ## Dependencies
 
@@ -87,6 +97,21 @@ Non presented results on a macbook pro Apple M2 Pro, 32Go RAM, are almost identi
 ## complete example:
 
 ### For testing: generate random reads and extract some of their kmers:
+=======
+ 
+## Quick benchmark
+Reproducible by running `bench.sh`` in the benchs folder. Presented results were obtained on GenOuest platform on a node with 32 cores (128 threads) Xeon 2.2 GHz.
+
+* Indexed: one million kmers of length 31 (takes 2s). The index size is 29MB. Used 32 threads
+* Queried: from 10,000 to 100 million reads, each of average length 350
+
+| Number of reads | Time  |  max RAM |
+|-----------------|----------|---|
+| 10,000          | 1s    	 | 7 GB |
+| 100,000         | 5s    	 | 7 GB |
+| 1,000,000       | 24.0   	 | 7 GB |
+| 10,000,000       | 15.0   	 | 7 GB |
+>>>>>>> dev
 
 ```bash
 # Generate 1 reference sequence of random length 50000 and minimum length 100
@@ -94,7 +119,6 @@ python scripts/generate_random_fasta.py 1 50000 100 ref_seq.fasta
 
 # Extract 1000 random "reads", each of length in [100;500] from the reference sequence
 python3 scripts/extract_random_sequences.py --input ref_seq.fasta --min_size 100 --max_size 500 --num 1000 --output reads.fasta 
-
 
 # From those reads, extract 500 random sequence containing the kmers. Those kmers are stored in sequences of length in [31;70]
 python3 scripts/extract_random_sequences.py --input reads.fasta --min_size 31 --max_size 70 --num 500 --output compacted_kmers.fasta
@@ -105,6 +129,7 @@ echo ref_set:compacted_kmers.fasta > fof.txt
 
 ### Index kmers and extract the reads containing the kmers:
 
+<<<<<<< HEAD
 1. index the kmers: 
    
 ```bash
@@ -113,6 +138,9 @@ back_to_sequences index_kmers --in_kmers fof.txt --out_index indexed_kmers -k 31
 
 2. extract the reads containing at least one indexed kmers: 
    
+=======
+
+>>>>>>> dev
 ```bash
 back_to_sequences query_sequences --in_sequences reads.fasta --in_kmer_index indexed_kmers --out_fasta filtered_reads.fasta --kmindex_path ./bin/kmindex
 ```
@@ -176,6 +204,7 @@ kmindex install is a bit complex (sept 2023)
     (sorry for the trouble)
 
 # TODO
+<<<<<<< HEAD
 
 * [x] Add a validation test (04/10/2023)
 * [x] Add a number of shared kmers per sequence instead of only their ratio 
@@ -185,3 +214,11 @@ kmindex install is a bit complex (sept 2023)
 * [ ] Thinks about a way to adapt this to protein sequences
 * [x] Add an option to set the size of the bloom filter used by kmindex
 * [ ] Estimate the FP rate (that should be null or negligible when the number of kmer to search is lower than a few thousands)
+=======
+* [X] Add a validation test (04/10/2023)
+* [X] Add a number of shared kmers per sequence instead of only their ratio 
+* [ ] ? add a threshold on the number of shared kmers
+* [X] Parallelize the read extraction step
+* [ ] Thinks about a way to adapt this to protein sequences
+* [X] Add an option to set the size of the bloom filter used by kmindex
+>>>>>>> dev

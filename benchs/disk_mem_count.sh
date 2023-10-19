@@ -44,4 +44,8 @@ disk_used=$(( $max - $start ))
 disk_GB=$((${disk_used}/1048576))
 mem_GB=$((${max_memory}/1048576))
 echo "************ disk used ( GB )" ${disk_GB} "*******************"
+<<<<<<< HEAD
 echo "************ max memory ( GB )" ${mem_GB} "********************"
+=======
+echo "************ max memory ( GB )" ${mem_GB} "********************"
+>>>>>>> dev
