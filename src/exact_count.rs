@@ -77,7 +77,7 @@ fn round(x: f32, decimals: u32) -> f32 {
     (x * y).round() / y
 }
 
-fn count_kmers_in_fasta_file_par(file_name: String, kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, kmer_size: usize, out_fasta: String, stranded: bool) -> std::io::Result<()>{
+fn count_kmers_in_fasta_file_par(file_name: String, kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, kmer_size: usize, out_fasta: String, threshold: f32, stranded: bool) -> std::io::Result<()>{
     let output = File::create(out_fasta)?;
     let write_lock = std::sync::Arc::new(std::sync::Mutex::new(output));
     let (tx, rx) = std::sync::mpsc::sync_channel(1024);
@@ -88,16 +88,17 @@ fn count_kmers_in_fasta_file_par(file_name: String, kmer_set:  &Arc<HashMap<Stri
         }
     }, ||{
         rx.into_iter().par_bridge().try_for_each(|record| -> std::io::Result<()>{
-            let record_as_string = record.as_str_checked().unwrap().trim().as_bytes(); // supprimer check ? unchecked ? 
+            let record_as_string = record.as_str().trim().as_bytes(); 
             let mut iter = record_as_string.split(|&x| x == b'\n');
             let stringheader = iter.next().unwrap();
-            let acgt_sequence = iter.next().unwrap().to_owned(); // eviter copie ?
-            let string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8"); // eviter copie ?
+            let acgt_sequence = iter.next().unwrap().to_owned(); // todo avoid a copy
+            let string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8"); // todo avoid a copy
             let nb_shared_kmers = count_shared_kmers_par(kmer_set, &string_acgt_sequence, kmer_size, stranded);
             let ratio_shared_kmers = nb_shared_kmers as f32 / (string_acgt_sequence.len() - kmer_size + 1) as f32;
-            // round ratio_shared_kmers to 3 decimals and transform to percents
-            let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
-            if nb_shared_kmers > 0{ // read contains at least one indexed kmer
+            
+            if ratio_shared_kmers > threshold{ // supports the user defined threshold
+                // round ratio_shared_kmers to 3 decimals and transform to percents
+                let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
                 let mut out = write_lock.lock().unwrap();
                 out.write_all(stringheader)?;
                 out.write_all(b" ")?;
@@ -139,7 +140,7 @@ fn count_shared_kmers_par(kmer_set:  &Arc<HashMap<String, atomic_counter::Relaxe
 
 
 
-pub fn validate_kmers(in_fasta_reads: String, in_fasta_kmers: String, out_fasta_reads:String, out_txt_kmers: String, kmer_size: usize, stranded: bool) -> std::io::Result<()> {
+pub fn validate_kmers(in_fasta_reads: String, in_fasta_kmers: String, out_fasta_reads:String, out_txt_kmers: String, kmer_size: usize, threshold: f32, stranded: bool) -> std::io::Result<()> {
       
     // check that inkmers and reads_file are non empty files:
     validate_non_empty_file(in_fasta_reads.clone());
@@ -150,7 +151,7 @@ pub fn validate_kmers(in_fasta_reads: String, in_fasta_kmers: String, out_fasta_
 
         Ok((kmer_set, kmer_size)) => {
             let kmer_set = Arc::new(kmer_set);
-            let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), stranded);
+            let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), threshold, stranded);
             println!("Filtered reads with exact kmer count are in file {}", out_fasta_reads);
             
 
