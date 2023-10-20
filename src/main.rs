@@ -32,21 +32,29 @@ struct Args {
     kmer_size: usize,
 
     /// Threshold of the ratio of kmers that must be found in a sequence to keep it (default 0). Thus by default, if no kmer is found in a sequence, it is not output.
-    #[arg(long, default_value_t = 0.0)]
+    #[arg(short, long, default_value_t = 0.0)]
     threshold: f32,
 
     /// Used original kmer strand (else canonical kmers are considered)
     #[arg(long, default_value_t = false)]
     stranded: bool,
+
+    /// Query the reverse complement of reads. Useless without the --stranded option
+    #[arg(long, default_value_t = false)]
+    query_reverse: bool,
 }
 
 fn main() {
     let args = Args::parse();
+    if args.stranded == false && args.query_reverse == true {
+        eprintln!("Warning: --query-reverse is useless without --stranded");
+    }
     let _ = validate_kmers(args.in_sequences, 
         args.in_kmers, 
         args.out_sequences, 
         args.out_kmers, 
         args.kmer_size,
         args.threshold, 
-        args.stranded);
+        args.stranded,
+        args.query_reverse);
 }
