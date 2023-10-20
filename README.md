@@ -2,8 +2,17 @@
 
 [![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
 
+<style>
+.aligncenter {
+    text-align: center;
+}
+</style>
 
-![k2.png](k2s.png)
+<p class="aligncenter">
+<img src="k2s.jpg" alt="Old library - IA generated" width="150" height="150">
+</p>
+
+<!-- ![Old library - IA generated](k2s.jpg) -->
 ## Description
 
 Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the kmers.
