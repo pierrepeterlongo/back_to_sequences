@@ -10,21 +10,22 @@ use exact_count::validate_kmers;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Input fasta file containing the original sequences (eg. reads)
+    /// Input fasta or fastq [.gz] file containing the original sequences (eg. reads)
     #[arg(long)]
-    in_fasta_reads: String,
+    in_sequences: String, 
 
     /// Input fasta file containing the original kmers
     #[arg(long)]
-    in_fasta_kmers: String,
+    in_kmers: String, 
 
-    /// Output fasta file containing the filtered original sequences (eg. reads)
+    /// Output file containing the filtered original sequences (eg. reads). 
+    /// It will be automatically in fasta or fastq format depending on the input file.
     #[arg(long)]
-    out_fasta_reads: String,
+    out_sequences: String, 
 
     /// If provided, output text file containing the kmers that occur in the reads with their number of occurrences
     #[arg(long, default_value_t = String::from(""))]
-    out_txt_kmers: String,
+    out_kmers: String,
 
     /// Size of the kmers to index and search
     #[arg(short, long, default_value_t = 31)]
@@ -41,10 +42,10 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let _ = validate_kmers(args.in_fasta_reads, 
-        args.in_fasta_kmers, 
-        args.out_fasta_reads, 
-        args.out_txt_kmers, 
+    let _ = validate_kmers(args.in_sequences, 
+        args.in_kmers, 
+        args.out_sequences, 
+        args.out_kmers, 
         args.kmer_size,
         args.threshold, 
         args.stranded);
