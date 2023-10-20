@@ -22,8 +22,8 @@ In this case 20 kmers are shared with the indexed kmers. This represents 6.13% o
 ## Install:
 
 ```bash
-git clone https://github.com/pierrepeterlongo/kmer2sequences.git
-cd kmer2sequences
+git clone https://github.com/pierrepeterlongo/back_to_sequences.git
+cd back_to_sequences
 cargo install --path . --locked
 ```
  
