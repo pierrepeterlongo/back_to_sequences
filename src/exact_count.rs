@@ -3,7 +3,6 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::io::{self};
-use std::sync::Arc;
 use fxread::initialize_reader;
 use atomic_counter::{RelaxedCounter, AtomicCounter};
 use rayon::prelude::*;
@@ -78,14 +77,14 @@ fn round(x: f32, decimals: u32) -> f32 {
 }
 
 fn count_kmers_in_fasta_file_par(file_name: String, 
-    kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, 
+    kmer_set:  &HashMap<String, atomic_counter::RelaxedCounter>, 
     kmer_size: usize, 
     out_fasta: String, 
     threshold: f32, 
     stranded: bool, 
     query_reverse: bool) -> std::io::Result<()>{
     let output = File::create(out_fasta)?;
-    let write_lock = std::sync::Arc::new(std::sync::Mutex::new(output));
+    let write_lock = std::sync::Mutex::new(output);
     let (tx, rx) = std::sync::mpsc::sync_channel(1024);
     let (_, result) = rayon::join(move ||{// lance deux threads 
         let reader = initialize_reader(&file_name).unwrap();
@@ -128,7 +127,7 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     result
 }
 
-fn count_shared_kmers_par(kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, read: &str, kmer_size: usize, stranded: bool) -> usize {
+fn count_shared_kmers_par(kmer_set:  &HashMap<String, atomic_counter::RelaxedCounter>, read: &str, kmer_size: usize, stranded: bool) -> usize {
     let mut shared_kmers_count = 0;
 
     for i in 0..(read.len() - kmer_size + 1) {
@@ -166,7 +165,6 @@ pub fn validate_kmers(in_fasta_reads: String,
     match index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded) {
 
         Ok((kmer_set, kmer_size)) => {
-            let kmer_set = Arc::new(kmer_set);
             let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), threshold, stranded, query_reverse);
             println!("Filtered sequences with exact kmer count are in file {}", out_fasta_reads);
             
