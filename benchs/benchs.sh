@@ -16,5 +16,5 @@ do
 #    python3 ../scripts/extract_random_sequences.py --input ref_seq.fasta --min_size 100 --max_size 500 --num ${nb_reads} --output reads_${nb_reads}.fasta 
 
     echo "Validation and kmer counting"
-    time ./disk_mem_count.sh back_to_sequences --in-fasta-kmers compacted_kmers.fasta --in-fasta-reads reads_${nb_reads}.fasta  --out-fasta-reads filtered_reads_${nb_reads}.fasta  -k 31 --out-txt-kmers counted_kmers_${nb_reads}.txt
+    time ./disk_mem_count.sh back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads_${nb_reads}.fasta  --out-sequences filtered_reads_${nb_reads}.fasta  -k 31 --out-kmers counted_kmers_${nb_reads}.txt
 done

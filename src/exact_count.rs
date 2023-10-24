@@ -1,38 +1,73 @@
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufWriter,Write};
 use std::io::{self};
-use std::sync::Arc;
+use auto_enums::auto_enum;
 use fxread::initialize_reader;
 use atomic_counter::{RelaxedCounter, AtomicCounter};
 use rayon::prelude::*;
 
 
 
-fn reverse_complement(kmer: &str) -> String {
-    kmer.chars()
-        .rev()
-        .map(|base| match base {
-            'A' => 'T',
-            'T' => 'A',
-            'C' => 'G',
-            'G' => 'C',
-            _ => base,
-        })
-        .collect()
-}
-
-fn canonical(kmer: &str, stranded: bool) -> String {
-    if stranded  {return kmer.to_string();}
-    let rev_comp = reverse_complement(kmer);
-    if kmer < &rev_comp {
-        kmer.to_string()
-    } else {
-        rev_comp
+fn base_complement(base: u8) -> u8
+{
+    match base {
+        b'A' => b'T',
+        b'T' => b'A',
+        b'C' => b'G',
+        b'G' => b'C',
+        c if c < 128 => c,
+        c => panic!("cannot complement base (contains non-ascii byte: 0x{:x})", c),
     }
 }
+ 
+/// Zero-copy object for normalizing a sequence
+///
+/// - converts to uppercase ascii
+/// - optionally reverse complements the sequence
+///
+/// To avoid extra memory allocations, the original slice is kept in place and the resulting
+/// sequence is returned through an iterator (`fn iter()`).
+/// 
+struct SequenceNormalizer<'a>
+{
+    raw: &'a [u8],
+    reverse_complement: bool,
+ }
+ 
+impl<'a> SequenceNormalizer<'a>
+{
+    /// - `raw` is the original sequence (ascii string)
+    /// - `reverse_complement` may be:
+    ///     - `Some(false)` to get the original sequence
+    ///     - `Some(true)` to get the reverse complement
+    ///     - `None` to get the canonical sequence
+    fn new(raw: &'a [u8], reverse_complement: Option<bool>) -> Self
+    {
+        Self{raw, reverse_complement: reverse_complement.unwrap_or_else(|| {
+            let forward = Self::iter_impl(raw, false);
+            let reverse = Self::iter_impl(raw, true);
+            reverse.cmp(forward).is_lt()
+        })}
+    }
 
+    #[auto_enum(Iterator)]
+    fn iter_impl(raw: &[u8] , reverse_complement: bool) -> impl Iterator<Item=u8> + '_
+    {
+        if reverse_complement {
+            raw.iter().rev().map(|c| base_complement(c.to_ascii_uppercase()))
+        } else {
+            raw.iter().map(|c| c.to_ascii_uppercase())
+        }
+    }
+
+    /// Get an iterator on the normalized sequence
+    fn iter(&self) -> impl Iterator<Item=u8> + '_
+    {
+        Self::iter_impl(self.raw, self.reverse_complement)
+    }
+}
 
 
 
@@ -50,20 +85,20 @@ fn validate_non_empty_file(in_file: String) {
         panic!("The {} file does not exist or there was an error checking its existence.", in_file);
     }
 }
-fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<String, T>, usize), io::Error> {
+fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<Vec<u8>, T>, usize), io::Error> {
     let mut kmer_set = HashMap::new();
+    let reverse_complement = if stranded { Some(false) } else { None };
 
     let reader = initialize_reader(&file_name).unwrap();
     for record in reader {
-        let record_as_string = record.as_str_checked().unwrap().trim().as_bytes();
-        let mut iter = record_as_string.split(|&x| x == b'\n');
-        let _ = iter.next().unwrap();
-        let acgt_sequence = iter.next().unwrap().to_owned();
-        let string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8");
+        let acgt_sequence = record.seq();
         // for each kmer of the sequence, insert it in the kmer_set
-        for i in 0..(string_acgt_sequence.len() - kmer_size + 1) {
-            let kmer = &string_acgt_sequence[i..(i + kmer_size)];
-            kmer_set.insert(canonical(&&kmer.to_ascii_uppercase(), stranded), Default::default()); // Atomic Counter Relaxed Counter RelaxedCounter::new(0);
+        for i in 0..(acgt_sequence.len() - kmer_size + 1) {
+            let kmer = &acgt_sequence[i..(i + kmer_size)];
+            kmer_set.insert(
+                SequenceNormalizer::new(kmer, reverse_complement).iter().collect(),
+                Default::default(), // RelaxedCounter::new(0)
+                );
         }
         // kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
     }
@@ -78,14 +113,47 @@ fn round(x: f32, decimals: u32) -> f32 {
 }
 
 fn count_kmers_in_fasta_file_par(file_name: String, 
-    kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, 
+    kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>, 
     kmer_size: usize, 
     out_fasta: String, 
     threshold: f32, 
     stranded: bool, 
     query_reverse: bool) -> std::io::Result<()>{
-    let output = File::create(out_fasta)?;
-    let write_lock = std::sync::Arc::new(std::sync::Mutex::new(output));
+
+    // structure for buffering and reordering the output
+    //
+    // Rayon::iter::ParallelBridge() does not preserve the original order of the items. We buffer
+    // the result in a hashmap and reorder them before output.
+    struct Output {
+        file: BufWriter<File>,
+        buffer: HashMap<usize, (fxread::Record, usize)>,
+        id: usize,
+    }
+    let output = std::sync::Mutex::new(Output{
+        file: BufWriter::new(File::create(out_fasta)?),
+        buffer: HashMap::new(),
+        id: 0,
+    });
+    let output_record = |file: &mut BufWriter<_>, record: &fxread::Record, nb_shared_kmers| -> std::io::Result<()>
+    {
+        let ratio_shared_kmers = nb_shared_kmers as f32 / (record.seq().len() - kmer_size + 1) as f32;
+        if ratio_shared_kmers > threshold{ // supports the user defined threshold
+            // round ratio_shared_kmers to 3 decimals and transform to percents
+            let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
+
+            let record_as_string = record.as_str().trim().as_bytes(); 
+            let mut iter = record_as_string.split(|&x| x == b'\n');
+
+            file.write_all(iter.next().unwrap())?;   // write the original header of the record
+            write!(file, " {} {}\n", nb_shared_kmers, percent_shared_kmers)?; // append metrics
+            for line in iter {
+                file.write_all(line)?;
+                file.write_all(b"\n")?;
+            }
+        } // end read contains at least one indexed kmer
+        Ok(())
+    };
+
     let (tx, rx) = std::sync::mpsc::sync_channel(1024);
     let (_, result) = rayon::join(move ||{// lance deux threads 
         let reader = initialize_reader(&file_name).unwrap();
@@ -93,47 +161,41 @@ fn count_kmers_in_fasta_file_par(file_name: String,
             tx.send(record).unwrap();
         }
     }, ||{
-        rx.into_iter().par_bridge().try_for_each(|record| -> std::io::Result<()>{
-            let record_as_string = record.as_str().trim().as_bytes(); 
-            let mut iter = record_as_string.split(|&x| x == b'\n');
-            let stringheader = iter.next().unwrap();
-            let acgt_sequence = iter.next().unwrap().to_owned(); // todo avoid a copy
-            let mut string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8"); // todo avoid a copy
-            if query_reverse{
-                string_acgt_sequence = reverse_complement(&string_acgt_sequence);
+        rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
+            if query_reverse {
+                record.rev_comp();  // reverse the sequence in place
             }
-            let nb_shared_kmers = count_shared_kmers_par(kmer_set, &string_acgt_sequence, kmer_size, stranded);
-            let ratio_shared_kmers = nb_shared_kmers as f32 / (string_acgt_sequence.len() - kmer_size + 1) as f32;
-            
-            if ratio_shared_kmers > threshold{ // supports the user defined threshold
-                // round ratio_shared_kmers to 3 decimals and transform to percents
-                let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
-                let mut out = write_lock.lock().unwrap();
-                out.write_all(stringheader)?;
-                out.write_all(b" ")?;
-                out.write_all(nb_shared_kmers.to_string().as_bytes())?; 
-                out.write_all(b" ")?;
-                out.write_all(percent_shared_kmers.to_string().as_bytes())?;
-                out.write_all(b"\n")?;
-                out.write_all(string_acgt_sequence.as_bytes())?;
-                out.write_all(b"\n")?;
-                for line in iter {
-                    out.write_all(line)?;
-                    out.write_all(b"\n")?;
-                }
-            } // end read contains at least one indexed kmer
-        Ok(())
+            let nb_shared_kmers = count_shared_kmers_par(kmer_set, record.seq(), kmer_size, stranded);
+
+            let mut out = output.lock().unwrap();
+            out.buffer.insert(id, (record, nb_shared_kmers));
+            assert!(id >= out.id);
+            for i in out.id.. {
+                match out.buffer.remove(&i) {
+                    None => break,
+                    Some((rec, nb)) => {
+                        output_record(&mut out.file, &rec, nb)?;
+                        out.id += 1;
+                    }
+                 }
+            }
+            Ok(())
         }) // end of for each
     }); // end of rayon join
-    result
+    result?;
+    assert!(output.lock().unwrap().buffer.is_empty());
+    Ok(())
 }
 
-fn count_shared_kmers_par(kmer_set:  &Arc<HashMap<String, atomic_counter::RelaxedCounter>>, read: &str, kmer_size: usize, stranded: bool) -> usize {
+fn count_shared_kmers_par(kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>, read: &[u8], kmer_size: usize, stranded: bool) -> usize {
     let mut shared_kmers_count = 0;
+    let mut canonical_kmer = Vec::new();
+    let reverse_complement = if stranded { Some(false) } else { None };
 
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
-        let canonical_kmer = canonical(&kmer.to_ascii_uppercase(), stranded);
+        canonical_kmer.clear();
+        canonical_kmer.extend(SequenceNormalizer::new(kmer, reverse_complement).iter());
         if kmer_set.contains_key(&canonical_kmer){
             shared_kmers_count += 1;
             // kmer_set[&canonical_kmer] += 1;
@@ -166,7 +228,6 @@ pub fn validate_kmers(in_fasta_reads: String,
     match index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded) {
 
         Ok((kmer_set, kmer_size)) => {
-            let kmer_set = Arc::new(kmer_set);
             let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), threshold, stranded, query_reverse);
             println!("Filtered sequences with exact kmer count are in file {}", out_fasta_reads);
             
@@ -179,7 +240,8 @@ pub fn validate_kmers(in_fasta_reads: String,
                 // let mut output = File::create(out_kmers_file);
                 for (kmer, count) in kmer_set.iter() {
                     if count.get() > 0 {
-                        write!(output, "{} {}\n", kmer, count.get())?;
+                        output.write_all(kmer)?;
+                        write!(output, " {}\n", count.get())?;
                     }
                 }
             println!("kmers with their number of occurrences in the original sequences are in file {}", out_txt_kmers);
