@@ -3,35 +3,70 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::io::{self};
+use auto_enums::auto_enum;
 use fxread::initialize_reader;
 use atomic_counter::{RelaxedCounter, AtomicCounter};
 use rayon::prelude::*;
 
 
 
-fn reverse_complement(kmer: &str) -> String {
-    kmer.chars()
-        .rev()
-        .map(|base| match base {
-            'A' => 'T',
-            'T' => 'A',
-            'C' => 'G',
-            'G' => 'C',
-            _ => base,
-        })
-        .collect()
-}
-
-fn canonical(kmer: &str, stranded: bool) -> String {
-    if stranded  {return kmer.to_string();}
-    let rev_comp = reverse_complement(kmer);
-    if kmer < &rev_comp {
-        kmer.to_string()
-    } else {
-        rev_comp
+fn base_complement(base: char) -> char
+{
+    match base {
+        'A' => 'T',
+        'T' => 'A',
+        'C' => 'G',
+        'G' => 'C',
+        _ => base,
     }
 }
+ 
+/// Zero-copy object for normalizing a sequence
+///
+/// - converts to uppercase ascii
+/// - optionally reverse complements the sequence
+///
+/// To avoid extra memory allocations, the original slice is kept in place and the resulting
+/// sequence is returned through an iterator (`fn iter()`).
+/// 
+struct SequenceNormalizer<'a>
+{
+    raw: &'a str,
+    reverse_complement: bool,
+ }
+ 
+impl<'a> SequenceNormalizer<'a>
+{
+    /// - `raw` is the original sequence (ascii string)
+    /// - `reverse_complement` may be:
+    ///     - `Some(false)` to get the original sequence
+    ///     - `Some(true)` to get the reverse complement
+    ///     - `None` to get the canonical sequence
+    fn new(raw: &'a str, reverse_complement: Option<bool>) -> Self
+    {
+        Self{raw, reverse_complement: reverse_complement.unwrap_or_else(|| {
+            let forward = Self::iter(raw, false);
+            let reverse = Self::iter(raw, true);
+            reverse.cmp(forward).is_lt()
+        })}
+    }
 
+    #[auto_enum(Iterator)]
+    fn iter(raw: &str , reverse_complement: bool) -> impl Iterator<Item=char> + '_
+    {
+        if reverse_complement {
+            raw.chars().rev().map(|c| base_complement(c.to_ascii_uppercase()))
+        } else {
+            raw.chars().map(|c| c.to_ascii_uppercase())
+        }
+    }
+
+    /// Get an iterator on the normalized sequence
+    fn chars(&self) -> impl Iterator<Item=char> + '_
+    {
+        Self::iter(self.raw, self.reverse_complement)
+    }
+}
 
 
 
@@ -51,6 +86,7 @@ fn validate_non_empty_file(in_file: String) {
 }
 fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<String, T>, usize), io::Error> {
     let mut kmer_set = HashMap::new();
+    let reverse_complement = if stranded { Some(false) } else { None };
 
     let reader = initialize_reader(&file_name).unwrap();
     for record in reader {
@@ -58,6 +94,10 @@ fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -
         // for each kmer of the sequence, insert it in the kmer_set
         for i in 0..(acgt_sequence.len() - kmer_size + 1) {
             let kmer = &acgt_sequence[i..(i + kmer_size)];
+            kmer_set.insert(
+                SequenceNormalizer::new(kmer, reverse_complement).chars().collect(),
+                Default::default(), // RelaxedCounter::new(0)
+                );
         }
         // kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
     }
@@ -149,10 +189,13 @@ fn count_kmers_in_fasta_file_par(file_name: String,
 
 fn count_shared_kmers_par(kmer_set:  &HashMap<String, atomic_counter::RelaxedCounter>, read: &str, kmer_size: usize, stranded: bool) -> usize {
     let mut shared_kmers_count = 0;
+    let mut canonical_kmer = String::new();
+    let reverse_complement = if stranded { Some(false) } else { None };
 
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
-        let canonical_kmer = canonical(&kmer.to_ascii_uppercase(), stranded);
+        canonical_kmer.clear();
+        canonical_kmer.extend(SequenceNormalizer::new(kmer, reverse_complement).chars());
         if kmer_set.contains_key(&canonical_kmer){
             shared_kmers_count += 1;
             // kmer_set[&canonical_kmer] += 1;
