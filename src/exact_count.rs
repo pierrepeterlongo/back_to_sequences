@@ -10,14 +10,15 @@ use rayon::prelude::*;
 
 
 
-fn base_complement(base: char) -> char
+fn base_complement(base: u8) -> u8
 {
     match base {
-        'A' => 'T',
-        'T' => 'A',
-        'C' => 'G',
-        'G' => 'C',
-        _ => base,
+        b'A' => b'T',
+        b'T' => b'A',
+        b'C' => b'G',
+        b'G' => b'C',
+        c if c < 128 => c,
+        c => panic!("cannot complement base (contains non-ascii byte: 0x{:x})", c),
     }
 }
  
@@ -31,7 +32,7 @@ fn base_complement(base: char) -> char
 /// 
 struct SequenceNormalizer<'a>
 {
-    raw: &'a str,
+    raw: &'a [u8],
     reverse_complement: bool,
  }
  
@@ -42,29 +43,29 @@ impl<'a> SequenceNormalizer<'a>
     ///     - `Some(false)` to get the original sequence
     ///     - `Some(true)` to get the reverse complement
     ///     - `None` to get the canonical sequence
-    fn new(raw: &'a str, reverse_complement: Option<bool>) -> Self
+    fn new(raw: &'a [u8], reverse_complement: Option<bool>) -> Self
     {
         Self{raw, reverse_complement: reverse_complement.unwrap_or_else(|| {
-            let forward = Self::iter(raw, false);
-            let reverse = Self::iter(raw, true);
+            let forward = Self::iter_impl(raw, false);
+            let reverse = Self::iter_impl(raw, true);
             reverse.cmp(forward).is_lt()
         })}
     }
 
     #[auto_enum(Iterator)]
-    fn iter(raw: &str , reverse_complement: bool) -> impl Iterator<Item=char> + '_
+    fn iter_impl(raw: &[u8] , reverse_complement: bool) -> impl Iterator<Item=u8> + '_
     {
         if reverse_complement {
-            raw.chars().rev().map(|c| base_complement(c.to_ascii_uppercase()))
+            raw.iter().rev().map(|c| base_complement(c.to_ascii_uppercase()))
         } else {
-            raw.chars().map(|c| c.to_ascii_uppercase())
+            raw.iter().map(|c| c.to_ascii_uppercase())
         }
     }
 
     /// Get an iterator on the normalized sequence
-    fn chars(&self) -> impl Iterator<Item=char> + '_
+    fn iter(&self) -> impl Iterator<Item=u8> + '_
     {
-        Self::iter(self.raw, self.reverse_complement)
+        Self::iter_impl(self.raw, self.reverse_complement)
     }
 }
 
@@ -84,18 +85,18 @@ fn validate_non_empty_file(in_file: String) {
         panic!("The {} file does not exist or there was an error checking its existence.", in_file);
     }
 }
-fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<String, T>, usize), io::Error> {
+fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<Vec<u8>, T>, usize), io::Error> {
     let mut kmer_set = HashMap::new();
     let reverse_complement = if stranded { Some(false) } else { None };
 
     let reader = initialize_reader(&file_name).unwrap();
     for record in reader {
-        let acgt_sequence = record.seq_str_checked().expect("Found invalid UTF-8");
+        let acgt_sequence = record.seq();
         // for each kmer of the sequence, insert it in the kmer_set
         for i in 0..(acgt_sequence.len() - kmer_size + 1) {
             let kmer = &acgt_sequence[i..(i + kmer_size)];
             kmer_set.insert(
-                SequenceNormalizer::new(kmer, reverse_complement).chars().collect(),
+                SequenceNormalizer::new(kmer, reverse_complement).iter().collect(),
                 Default::default(), // RelaxedCounter::new(0)
                 );
         }
@@ -112,7 +113,7 @@ fn round(x: f32, decimals: u32) -> f32 {
 }
 
 fn count_kmers_in_fasta_file_par(file_name: String, 
-    kmer_set:  &HashMap<String, atomic_counter::RelaxedCounter>, 
+    kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>, 
     kmer_size: usize, 
     out_fasta: String, 
     threshold: f32, 
@@ -164,8 +165,7 @@ fn count_kmers_in_fasta_file_par(file_name: String,
             if query_reverse {
                 record.rev_comp();  // reverse the sequence in place
             }
-            let acgt_sequence = record.seq_str_checked().expect("Found invalid UTF-8");
-            let nb_shared_kmers = count_shared_kmers_par(kmer_set, acgt_sequence, kmer_size, stranded);
+            let nb_shared_kmers = count_shared_kmers_par(kmer_set, record.seq(), kmer_size, stranded);
 
             let mut out = output.lock().unwrap();
             out.buffer.insert(id, (record, nb_shared_kmers));
@@ -187,15 +187,15 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     Ok(())
 }
 
-fn count_shared_kmers_par(kmer_set:  &HashMap<String, atomic_counter::RelaxedCounter>, read: &str, kmer_size: usize, stranded: bool) -> usize {
+fn count_shared_kmers_par(kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>, read: &[u8], kmer_size: usize, stranded: bool) -> usize {
     let mut shared_kmers_count = 0;
-    let mut canonical_kmer = String::new();
+    let mut canonical_kmer = Vec::new();
     let reverse_complement = if stranded { Some(false) } else { None };
 
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
         canonical_kmer.clear();
-        canonical_kmer.extend(SequenceNormalizer::new(kmer, reverse_complement).chars());
+        canonical_kmer.extend(SequenceNormalizer::new(kmer, reverse_complement).iter());
         if kmer_set.contains_key(&canonical_kmer){
             shared_kmers_count += 1;
             // kmer_set[&canonical_kmer] += 1;
@@ -240,7 +240,8 @@ pub fn validate_kmers(in_fasta_reads: String,
                 // let mut output = File::create(out_kmers_file);
                 for (kmer, count) in kmer_set.iter() {
                     if count.get() > 0 {
-                        write!(output, "{} {}\n", kmer, count.get())?;
+                        output.write_all(kmer)?;
+                        write!(output, " {}\n", count.get())?;
                     }
                 }
             println!("kmers with their number of occurrences in the original sequences are in file {}", out_txt_kmers);
