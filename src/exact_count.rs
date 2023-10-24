@@ -78,8 +78,41 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     threshold: f32, 
     stranded: bool, 
     query_reverse: bool) -> std::io::Result<()>{
-    let output = File::create(out_fasta)?;
-    let write_lock = std::sync::Mutex::new(output);
+
+    // structure for buffering and reordering the output
+    //
+    // Rayon::iter::ParallelBridge() does not preserve the original order of the items. We buffer
+    // the result in a hashmap and reorder them before output.
+    struct Output {
+        file: File,
+        buffer: HashMap<usize, (fxread::Record, usize)>,
+        id: usize,
+    }
+    let output = std::sync::Mutex::new(Output{
+        file: File::create(out_fasta)?,
+        buffer: HashMap::new(),
+        id: 0,
+    });
+    let output_record = |file: &mut File, record: &fxread::Record, nb_shared_kmers| -> std::io::Result<()>
+    {
+        let ratio_shared_kmers = nb_shared_kmers as f32 / (record.seq().len() - kmer_size + 1) as f32;
+        if ratio_shared_kmers > threshold{ // supports the user defined threshold
+            // round ratio_shared_kmers to 3 decimals and transform to percents
+            let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
+
+            let record_as_string = record.as_str().trim().as_bytes(); 
+            let mut iter = record_as_string.split(|&x| x == b'\n');
+
+            file.write_all(iter.next().unwrap())?;   // write the original header of the record
+            write!(file, " {} {}\n", nb_shared_kmers, percent_shared_kmers)?; // append metrics
+            for line in iter {
+                file.write_all(line)?;
+                file.write_all(b"\n")?;
+            }
+        } // end read contains at least one indexed kmer
+        Ok(())
+    };
+
     let (tx, rx) = std::sync::mpsc::sync_channel(1024);
     let (_, result) = rayon::join(move ||{// lance deux threads 
         let reader = initialize_reader(&file_name).unwrap();
@@ -87,32 +120,31 @@ fn count_kmers_in_fasta_file_par(file_name: String,
             tx.send(record).unwrap();
         }
     }, ||{
-        rx.into_iter().par_bridge().try_for_each(|mut record| -> std::io::Result<()>{
+        rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
             if query_reverse {
                 record.rev_comp();  // reverse the sequence in place
             }
-            let record_as_string = record.as_str().trim().as_bytes(); 
-            let mut iter = record_as_string.split(|&x| x == b'\n');
-            let stringheader = iter.next().unwrap();
             let acgt_sequence = record.seq_str_checked().expect("Found invalid UTF-8");
             let nb_shared_kmers = count_shared_kmers_par(kmer_set, acgt_sequence, kmer_size, stranded);
-            let ratio_shared_kmers = nb_shared_kmers as f32 / (acgt_sequence.len() - kmer_size + 1) as f32;
-            
-            if ratio_shared_kmers > threshold{ // supports the user defined threshold
-                // round ratio_shared_kmers to 3 decimals and transform to percents
-                let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
-                let mut out = write_lock.lock().unwrap();
-                out.write_all(stringheader)?;
-                write!(out, " {} {}\n", nb_shared_kmers, percent_shared_kmers)?;
-                for line in iter {
-                    out.write_all(line)?;
-                    out.write_all(b"\n")?;
-                }
-            } // end read contains at least one indexed kmer
-        Ok(())
+
+            let mut out = output.lock().unwrap();
+            out.buffer.insert(id, (record, nb_shared_kmers));
+            assert!(id >= out.id);
+            for i in out.id.. {
+                match out.buffer.remove(&i) {
+                    None => break,
+                    Some((rec, nb)) => {
+                        output_record(&mut out.file, &rec, nb)?;
+                        out.id += 1;
+                    }
+                 }
+            }
+            Ok(())
         }) // end of for each
     }); // end of rayon join
-    result
+    result?;
+    assert!(output.lock().unwrap().buffer.is_empty());
+    Ok(())
 }
 
 fn count_shared_kmers_par(kmer_set:  &HashMap<String, atomic_counter::RelaxedCounter>, read: &str, kmer_size: usize, stranded: bool) -> usize {
