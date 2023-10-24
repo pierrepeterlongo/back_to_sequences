@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufWriter,Write};
 use std::io::{self};
 use auto_enums::auto_enum;
 use fxread::initialize_reader;
@@ -125,16 +125,16 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     // Rayon::iter::ParallelBridge() does not preserve the original order of the items. We buffer
     // the result in a hashmap and reorder them before output.
     struct Output {
-        file: File,
+        file: BufWriter<File>,
         buffer: HashMap<usize, (fxread::Record, usize)>,
         id: usize,
     }
     let output = std::sync::Mutex::new(Output{
-        file: File::create(out_fasta)?,
+        file: BufWriter::new(File::create(out_fasta)?),
         buffer: HashMap::new(),
         id: 0,
     });
-    let output_record = |file: &mut File, record: &fxread::Record, nb_shared_kmers| -> std::io::Result<()>
+    let output_record = |file: &mut BufWriter<_>, record: &fxread::Record, nb_shared_kmers| -> std::io::Result<()>
     {
         let ratio_shared_kmers = nb_shared_kmers as f32 / (record.seq().len() - kmer_size + 1) as f32;
         if ratio_shared_kmers > threshold{ // supports the user defined threshold
