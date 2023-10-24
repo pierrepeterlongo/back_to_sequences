@@ -54,15 +54,10 @@ fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -
 
     let reader = initialize_reader(&file_name).unwrap();
     for record in reader {
-        let record_as_string = record.as_str_checked().unwrap().trim().as_bytes();
-        let mut iter = record_as_string.split(|&x| x == b'\n');
-        let _ = iter.next().unwrap();
-        let acgt_sequence = iter.next().unwrap().to_owned();
-        let string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8");
+        let acgt_sequence = record.seq_str_checked().expect("Found invalid UTF-8");
         // for each kmer of the sequence, insert it in the kmer_set
-        for i in 0..(string_acgt_sequence.len() - kmer_size + 1) {
-            let kmer = &string_acgt_sequence[i..(i + kmer_size)];
-            kmer_set.insert(canonical(&&kmer.to_ascii_uppercase(), stranded), Default::default()); // Atomic Counter Relaxed Counter RelaxedCounter::new(0);
+        for i in 0..(acgt_sequence.len() - kmer_size + 1) {
+            let kmer = &acgt_sequence[i..(i + kmer_size)];
         }
         // kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
     }
@@ -92,30 +87,23 @@ fn count_kmers_in_fasta_file_par(file_name: String,
             tx.send(record).unwrap();
         }
     }, ||{
-        rx.into_iter().par_bridge().try_for_each(|record| -> std::io::Result<()>{
+        rx.into_iter().par_bridge().try_for_each(|mut record| -> std::io::Result<()>{
+            if query_reverse {
+                record.rev_comp();  // reverse the sequence in place
+            }
             let record_as_string = record.as_str().trim().as_bytes(); 
             let mut iter = record_as_string.split(|&x| x == b'\n');
             let stringheader = iter.next().unwrap();
-            let acgt_sequence = iter.next().unwrap().to_owned(); // todo avoid a copy
-            let mut string_acgt_sequence = String::from_utf8(acgt_sequence).expect("Found invalid UTF-8"); // todo avoid a copy
-            if query_reverse{
-                string_acgt_sequence = reverse_complement(&string_acgt_sequence);
-            }
-            let nb_shared_kmers = count_shared_kmers_par(kmer_set, &string_acgt_sequence, kmer_size, stranded);
-            let ratio_shared_kmers = nb_shared_kmers as f32 / (string_acgt_sequence.len() - kmer_size + 1) as f32;
+            let acgt_sequence = record.seq_str_checked().expect("Found invalid UTF-8");
+            let nb_shared_kmers = count_shared_kmers_par(kmer_set, acgt_sequence, kmer_size, stranded);
+            let ratio_shared_kmers = nb_shared_kmers as f32 / (acgt_sequence.len() - kmer_size + 1) as f32;
             
             if ratio_shared_kmers > threshold{ // supports the user defined threshold
                 // round ratio_shared_kmers to 3 decimals and transform to percents
                 let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
                 let mut out = write_lock.lock().unwrap();
                 out.write_all(stringheader)?;
-                out.write_all(b" ")?;
-                out.write_all(nb_shared_kmers.to_string().as_bytes())?; 
-                out.write_all(b" ")?;
-                out.write_all(percent_shared_kmers.to_string().as_bytes())?;
-                out.write_all(b"\n")?;
-                out.write_all(string_acgt_sequence.as_bytes())?;
-                out.write_all(b"\n")?;
+                write!(out, " {} {}\n", nb_shared_kmers, percent_shared_kmers)?;
                 for line in iter {
                     out.write_all(line)?;
                     out.write_all(b"\n")?;
