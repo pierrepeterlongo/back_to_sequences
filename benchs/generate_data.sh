@@ -7,5 +7,5 @@ python3 ../scripts/extract_random_sequences.py --input ref_seq.fasta --min_size 
 for nb_reads in 10000 100000 1000000 10000000 100000000
 do
     echo "generate $nb_reads reads"
-	python3 ../scripts/extract_random_sequences.py --input ref_seq.fasta --min_size 100 --max_size 500 --num ${nb_reads} --output reads_${nb_reads}.fasta 
+	python3 ../scripts/extract_random_sequences.py --input ref_seq.fasta --min_size 100 --max_size 100 --num ${nb_reads} --output reads_${nb_reads}.fasta 
 done

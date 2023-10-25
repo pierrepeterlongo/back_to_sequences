@@ -31,7 +31,7 @@ cargo install --path . --locked
 Reproducible by running `bench.sh` in the benchs folder. 
 Presented results were obtained on 
 * the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
-* and a macbook, Apple M2 pro, 16 GB RAM, with 10 threads denoted by "mac" in the table below.
+* and a MacBook, Apple M2 pro, 16 GB RAM, with 10 threads denoted by "mac" in the table below.
 
 We indexed: one million kmers (exactly 995,318) of length 31.
 
@@ -39,11 +39,11 @@ We queried: from 10,000 to 100 million reads, each of average length 350.
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
-| 10,000          | 2s   | 	3s | 7 GB |
-| 100,000         | 3s   | 	4s | 7 GB |
-| 1,000,000       | 11s  | 15s	 | 7 GB |
-| 10,000,000       | 1m09  | 1m32	 | 7 GB |
-| 100,000,000       | 10m42 | 13m34	 | 7 GB |
+| 10,000          | 2s   | 	2s | 7 GB |
+| 100,000         | 2s   | 	2s | 7 GB |
+| 1,000,000       | 7s  | 8s	 | 7 GB |
+| 10,000,000       | 23s  | 44s	 | 7 GB |
+| 100,000,000       | 3m41 | 6m34	 | 7 GB |
 
 ## Usage
 ### help
