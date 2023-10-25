@@ -1,6 +1,6 @@
 use clap::Parser;
 mod exact_count;
-use exact_count::validate_kmers;
+use exact_count::back_to_sequences;
 
 
 
@@ -31,9 +31,18 @@ struct Args {
     #[arg(short, long, default_value_t = 31)]
     kmer_size: usize,
 
-    /// Threshold of the ratio of kmers that must be found in a sequence to keep it (default 0). Thus by default, if no kmer is found in a sequence, it is not output.
+    /// Output sequences are those whose ratio of indexed kmers is in ]min_threshold; max_threshold]
+    /// Minimal threshold of the ratio  (%) of kmers that must be found in a sequence to keep it (default 0%). 
+    /// Thus by default, if no kmer is found in a sequence, it is not output.
     #[arg(short, long, default_value_t = 0.0)]
-    threshold: f32,
+    min_threshold: f32,
+
+    
+    /// Output sequences are those whose ratio of indexed kmers is in ]min_threshold; max_threshold]
+    /// Maximal threshold of the ratio (%) of kmers that must be found in a sequence to keep it (default 100%). 
+    /// Thus by default, there is no limitation on the maximal number of kmers found in a sequence. 
+    #[arg(long, default_value_t = 100.0)]
+    max_threshold: f32,
 
     /// Used original kmer strand (else canonical kmers are considered)
     #[arg(long, default_value_t = false)]
@@ -49,12 +58,13 @@ fn main() {
     if args.stranded == false && args.query_reverse == true {
         eprintln!("Warning: --query-reverse is useless without --stranded");
     }
-    let _ = validate_kmers(args.in_sequences, 
+    let _ = back_to_sequences(args.in_sequences, 
         args.in_kmers, 
         args.out_sequences, 
         args.out_kmers, 
         args.kmer_size,
-        args.threshold, 
+        args.min_threshold, 
+        args.max_threshold, 
         args.stranded,
         args.query_reverse);
 }

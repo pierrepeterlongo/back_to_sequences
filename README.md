@@ -40,10 +40,10 @@ We queried: from 10,000 to 100 million reads, each of average length 350.
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
 | 10,000          | 2s   | 	3s | 7 GB |
-| 100,000         | 4s   | 	4s | 7 GB |
-| 1,000,000       | 12s  | 15s	 | 7 GB |
-| 10,000,000       | 1m10  | 1m32	 | 7 GB |
-| 100,000,000       | 10m48 | 23m41	 | 7 GB |
+| 100,000         | 3s   | 	4s | 7 GB |
+| 1,000,000       | 11s  | 15s	 | 7 GB |
+| 10,000,000       | 1m09  | 1m32	 | 7 GB |
+| 100,000,000       | 10m42 | 13m34	 | 7 GB |
 
 ## Usage
 ### help

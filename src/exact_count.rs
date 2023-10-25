@@ -73,9 +73,8 @@ impl<'a> SequenceNormalizer<'a>
 
 
 
+/// check that a file name corresponds to a non empty file:
 fn validate_non_empty_file(in_file: String) {
-    // check that inkmers is a non empty file:
-    // Attempt to get metadata for the file
     if let Ok(metadata) = fs::metadata(in_file.clone()) {
         // Check if the file exists
         if ! metadata.is_file() {
@@ -85,6 +84,9 @@ fn validate_non_empty_file(in_file: String) {
         panic!("The {} file does not exist or there was an error checking its existence.", in_file);
     }
 }
+
+/// index all kmers of size kmer_size in the fasta file
+/// returns a hashmap with the kmers as keys and their count as values, initialized to 0
 fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<Vec<u8>, T>, usize), io::Error> {
     let mut kmer_set = HashMap::new();
     let reverse_complement = if stranded { Some(false) } else { None };
@@ -100,23 +102,26 @@ fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -
                 Default::default(), // RelaxedCounter::new(0)
                 );
         }
-        // kmer_set.insert(canonical(&&string_acgt_sequence.to_ascii_uppercase()), 0);
     }
     println!("Indexed {} kmers, each of size {}", kmer_set.len(), kmer_size);
     
     Ok((kmer_set, kmer_size))
 }
 
+/// round a float to a given number of decimals
 fn round(x: f32, decimals: u32) -> f32 {
     let y = 10i32.pow(decimals) as f32;
     (x * y).round() / y
 }
 
+/// for each sequence of a given fasta file, count the number of indexed kmers it contains
+/// and output the sequence if its ratio of indexed kmers is in ]min_threshold, max_threshold]
 fn count_kmers_in_fasta_file_par(file_name: String, 
     kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>, 
     kmer_size: usize, 
     out_fasta: String, 
-    threshold: f32, 
+    min_threshold: f32, 
+    max_threshold: f32,
     stranded: bool, 
     query_reverse: bool) -> std::io::Result<()>{
 
@@ -136,10 +141,9 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     });
     let output_record = |file: &mut BufWriter<_>, record: &fxread::Record, nb_shared_kmers| -> std::io::Result<()>
     {
-        let ratio_shared_kmers = nb_shared_kmers as f32 / (record.seq().len() - kmer_size + 1) as f32;
-        if ratio_shared_kmers > threshold{ // supports the user defined threshold
-            // round ratio_shared_kmers to 3 decimals and transform to percents
-            let percent_shared_kmers = round(ratio_shared_kmers*100.0, 2);
+        // round percent_shared_kmers to 3 decimals and transform to percents
+        let percent_shared_kmers = round((nb_shared_kmers as f32 / (record.seq().len() - kmer_size + 1) as f32) * 100.0, 2) ;
+        if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold { // supports the user defined thresholds
 
             let record_as_string = record.as_str().trim().as_bytes(); 
             let mut iter = record_as_string.split(|&x| x == b'\n');
@@ -187,6 +191,7 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     Ok(())
 }
 
+/// count the number of indexed kmers in a given read
 fn count_shared_kmers_par(kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>, read: &[u8], kmer_size: usize, stranded: bool) -> usize {
     let mut shared_kmers_count = 0;
     let mut canonical_kmer = Vec::new();
@@ -210,13 +215,15 @@ fn count_shared_kmers_par(kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCo
 }
 
 
-
-pub fn validate_kmers(in_fasta_reads: String, 
+/// Extract sequences that contain some kmers and 
+/// output the kmers that occur in the reads with their number of occurrences
+pub fn back_to_sequences(in_fasta_reads: String, 
     in_fasta_kmers: String, 
     out_fasta_reads:String, 
     out_txt_kmers: String, 
     kmer_size: usize, 
-    threshold: f32, 
+    min_threshold: f32, 
+    max_threshold: f32,
     stranded: bool,
     query_reverse: bool) -> std::io::Result<()> {
       
@@ -228,7 +235,7 @@ pub fn validate_kmers(in_fasta_reads: String,
     match index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded) {
 
         Ok((kmer_set, kmer_size)) => {
-            let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), threshold, stranded, query_reverse);
+            let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), min_threshold, max_threshold, stranded, query_reverse);
             println!("Filtered sequences with exact kmer count are in file {}", out_fasta_reads);
             
 
