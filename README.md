@@ -30,8 +30,8 @@ cargo install --path . --locked
 ## Quick benchmark
 Reproducible by running `bench.sh` in the benchs folder. 
 Presented results were obtained on 
-* the GenOuest platform on a node with 32 cores (128 threads) Xeon 2.2 GHz, denoted by "genouest" in the table below.
-* and a macbook, Apple M2 pro, 16 GB RAM, denoted by "mac" in the table below.
+* the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
+* and a macbook, Apple M2 pro, 16 GB RAM, with 10 threads denoted by "mac" in the table below.
 
 We indexed: one million kmers (exactly 995,318) of length 31.
 
@@ -58,8 +58,10 @@ Options:
       --out-sequences <OUT_SEQUENCES>  Output file containing the filtered original sequences (eg. reads). It will be automatically in fasta or fastq format depending on the input file
       --out-kmers <OUT_KMERS>          If provided, output text file containing the kmers that occur in the reads with their number of occurrences [default: ]
   -k, --kmer-size <KMER_SIZE>          Size of the kmers to index and search [default: 31]
-      --threshold <THRESHOLD>          Threshold of the ratio of kmers that must be found in a sequence to keep it (default 0). Thus by default, if no kmer is found in a sequence, it is not output [default: 0]
+  -m, --min-threshold <MIN_THRESHOLD>  Minimal threshold of the ratio  (%) of kmers that must be found in a sequence to keep it (default 0%). Thus by default, if no kmer is found in a sequence, it is not output [default: 0]
+      --max-threshold <MAX_THRESHOLD>  Maximal threshold of the ratio (%) of kmers that must be found in a sequence to keep it (default 100%). Thus by default, there is no limitation on the maximal number of kmers found in a sequence [default: 100]
       --stranded                       Used original kmer strand (else canonical kmers are considered)
+      --query-reverse                  Query the reverse complement of reads. Useless without the --stranded option
   -h, --help                           Print help
   -V, --version                        Print version
 ```

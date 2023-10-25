@@ -58,6 +58,9 @@ fn main() {
     if args.stranded == false && args.query_reverse == true {
         eprintln!("Warning: --query-reverse is useless without --stranded");
     }
+    if args.min_threshold > args.max_threshold {
+        panic!("Error: --min-threshold must be <= --max-threshold");
+    }
     let _ = back_to_sequences(args.in_sequences, 
         args.in_kmers, 
         args.out_sequences, 
