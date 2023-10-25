@@ -1,6 +1,5 @@
 [package]
 name = "back_to_sequences"
-default-run="back_to_sequences"
 version = "0.2.4"
 edition = "2021"
 
@@ -20,7 +19,3 @@ rayon = "1.5.1"
 [[bin]]
 name = "back_to_sequences"
 path = "src/main.rs"
-    
-#[[bin]]
-#name = "validation"
-#path = "src/validate_kmers.rs"
