@@ -143,80 +143,107 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     stranded: bool, 
     query_reverse: bool) -> std::io::Result<()>{
 
-    // structure for buffering and reordering the output
-    //
-    // Rayon::iter::ParallelBridge() does not preserve the original order of the items. We buffer
-    // the result in a hashmap and reorder them before output.
-    struct Output {
-        file: BufWriter<File>,
-        buffer: HashMap<usize, (fxread::Record, usize)>,
+    const CHUNK_SIZE: usize = 32; // number of records
+    const INPUT_CHANNEL_SIZE:  usize = 8; // in units of CHUNK_SIZE records
+    const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
+
+    struct Chunk {
         id: usize,
+        records: Vec<(fxread::Record, Option<usize>)>,
     }
-    let output = std::sync::Mutex::new(Output{
-        file: BufWriter::new(File::create(out_fasta)?),
-        buffer: HashMap::new(),
-        id: 0,
-    });
-    let output_record = |file: &mut BufWriter<_>, record: &fxread::Record, nb_shared_kmers| -> std::io::Result<()>
-    {
+
+    let (input_tx,   input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
+    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
+    
+    let mut output_file = BufWriter::new(File::create(out_fasta)?);
+    let mut output_record = move |(record, nb_shared_kmers): (fxread::Record, Option<usize>)| -> std::io::Result<()> {
         // round percent_shared_kmers to 3 decimals and transform to percents
-        let percent_shared_kmers = round((nb_shared_kmers as f32 / (record.seq().len() - kmer_size + 1) as f32) * 100.0, 2) ;
+        let percent_shared_kmers = round((nb_shared_kmers.unwrap() as f32 / (record.seq().len() - kmer_size + 1) as f32) * 100.0, 2) ;
         if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold { // supports the user defined thresholds
 
             let record_as_string = record.as_str().trim().as_bytes(); 
             let mut iter = record_as_string.split(|&x| x == b'\n');
 
-            file.write_all(iter.next().unwrap())?;   // write the original header of the record
-            write!(file, " {} {}\n", nb_shared_kmers, percent_shared_kmers)?; // append metrics
+            output_file.write_all(iter.next().unwrap())?;   // write the original header of the record
+            write!(output_file, " {} {}\n", nb_shared_kmers.unwrap(), percent_shared_kmers)?; // append metrics
             for line in iter {
-                file.write_all(line)?;
-                file.write_all(b"\n")?;
+                output_file.write_all(line)?;
+                output_file.write_all(b"\n")?;
             }
         } // end read contains at least one indexed kmer
         Ok(())
     };
 
-    let (tx, rx) = std::sync::mpsc::sync_channel(1024);
 
     let reader_thread = std::thread::spawn(move || {
-        if file_name.len() > 0 {
-            let reader = initialize_reader(&file_name).unwrap();
-            for record in reader {
-                tx.send(record).unwrap();
+        let read_records = |reader: &mut dyn fxread::FastxRead<Item = fxread::Record>| {
+            for id in 0.. {
+                let mut vec = Vec::with_capacity(CHUNK_SIZE);
+                for _ in 0..CHUNK_SIZE {
+                    match reader.next() {
+                        Some(record) => vec.push((record, None)),
+                        None => break,
+                    }
+                }
+                if vec.is_empty() || input_tx.send(Chunk{ id, records: vec }).is_err() {
+                    return;
+                }
             }
-        }
-        else {
-            let input = stdin().lock();
-            let reader = initialize_stdin_reader(input).unwrap();
+        };
 
-            for record in reader {
-                tx.send(record).unwrap();
-            }
+        if file_name.len() > 0 {
+            read_records(
+                initialize_reader(&file_name).unwrap().as_mut());
+        } else {
+            let input = stdin().lock();
+            read_records(
+                initialize_stdin_reader(input).unwrap().as_mut());
         }
     });
-    rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
+
+    let writer_thread = std::thread::spawn(move || -> io::Result<_> {
+
+        // buffer for reordering the output (because Rayon::iter::ParallelBridge() does not
+        // preserve the original order of the items)
+        let mut buffer = HashMap::<usize, Vec<_>>::new();
+
+        for id in 0.. {
+            let records = match buffer.remove(&id) {
+                Some(vec) => vec,
+                None => loop {
+                    match output_rx.recv() {
+                        Err(_) => {
+                            assert!(buffer.is_empty());
+                            return Ok(());
+                        },
+                        Ok(chunk) =>
+                            if chunk.id == id {
+                                break chunk.records;
+                            } else {
+                                buffer.insert(chunk.id, chunk.records);
+                            }
+                    }
+                },
+            };
+            records.into_iter().try_for_each(&mut output_record)?;
+        }
+        unreachable!()
+    });
+
+    input_rx.into_iter().par_bridge().try_for_each(move |mut chunk| {
+        for (record, nb_shared_kmers) in &mut chunk.records {
             if query_reverse {
                 record.rev_comp();  // reverse the sequence in place
             }
-            let nb_shared_kmers = count_shared_kmers_par(kmer_set, record.seq(), kmer_size, stranded);
+            *nb_shared_kmers = Some(count_shared_kmers_par(kmer_set, record.seq(), kmer_size, stranded));
+        }
+        output_tx.send(chunk)
+    })
+    .ok(); // result ignored because an error on output_tx.send() would come together with an io
+           // error in the writer thread
 
-            let mut out = output.lock().unwrap();
-            out.buffer.insert(id, (record, nb_shared_kmers));
-            assert!(id >= out.id);
-            for i in out.id.. {
-                match out.buffer.remove(&i) {
-                    None => break,
-                    Some((rec, nb)) => {
-                        output_record(&mut out.file, &rec, nb)?;
-                        out.id += 1;
-                    }
-                 }
-            }
-            Ok(())
-    })?; // end of for each
-    assert!(output.lock().unwrap().buffer.is_empty());
     reader_thread.join().unwrap();
-    Ok(())
+    writer_thread.join().unwrap()
 }
 
 /// count the number of indexed kmers in a given read
