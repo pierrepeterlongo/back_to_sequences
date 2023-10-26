@@ -28,7 +28,7 @@ cargo install --path . --locked
 ```
  
 ## Quick benchmark
-Reproducible by running `bench.sh` in the benchs folder. 
+Reproducible by running `generate_data.sh` and then `bench.sh` in the `benchs` folder. 
 Presented results were obtained on 
 * the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
 * and a MacBook, Apple M2 pro, 16 GB RAM, with 10 threads denoted by "mac" in the table below.
