@@ -92,25 +92,27 @@ impl<'a> SequenceNormalizer<'a>
 
 
 /// check that a file name corresponds to a non empty file:
-fn validate_non_empty_file(in_file: String) {
+fn validate_non_empty_file(in_file: String) -> Result<(), ()> {
     if let Ok(metadata) = fs::metadata(in_file.clone()) {
         // Check if the file exists
         if ! metadata.is_file() {
-            panic!("{:#} exists, but it's not a file.", in_file);
+            return Err(eprintln!("{:#} exists, but it's not a file.", in_file));
         }
     } else {
-        panic!("The {} file does not exist or there was an error checking its existence.", in_file);
+        return Err(eprintln!("The {} file does not exist or there was an error checking its existence.", in_file));
     }
+    Ok(())
 }
 
 /// index all kmers of size kmer_size in the fasta file
 /// returns a hashmap with the kmers as keys and their count as values, initialized to 0
-fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<Vec<u8>, T>, usize), io::Error> {
+fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> anyhow::Result<(HashMap<Vec<u8>, T>, usize)> {
     let mut kmer_set = HashMap::new();
     let reverse_complement = if stranded { Some(false) } else { None };
 
-    let reader = initialize_reader(&file_name).unwrap();
-    for record in reader {
+    let mut reader = initialize_reader(&file_name)?;
+    loop {
+        let Some(record) = reader.next_record()? else { break };
         let acgt_sequence = record.seq();
         // for each kmer of the sequence, insert it in the kmer_set
         for i in 0..(acgt_sequence.len() - kmer_size + 1) {
@@ -141,7 +143,7 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     min_threshold: f32, 
     max_threshold: f32,
     stranded: bool, 
-    query_reverse: bool) -> std::io::Result<()>{
+    query_reverse: bool) -> Result<(), ()>{
 
     const CHUNK_SIZE: usize = 32; // number of records
     const INPUT_CHANNEL_SIZE:  usize = 8; // in units of CHUNK_SIZE records
@@ -155,7 +157,10 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     let (input_tx,   input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
     let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
     
-    let mut output_file = BufWriter::new(File::create(out_fasta)?);
+    let mut output_file = BufWriter::new(
+        File::create(out_fasta).map_err(
+            |e| eprintln!("Error: failed to open the sequence file for writing: {}", e))?);
+
     let mut output_record = move |(record, nb_shared_kmers): (fxread::Record, Option<usize>)| -> std::io::Result<()> {
         // round percent_shared_kmers to 3 decimals and transform to percents
         let percent_shared_kmers = round((nb_shared_kmers.unwrap() as f32 / (record.seq().len() - kmer_size + 1) as f32) * 100.0, 2) ;
@@ -175,29 +180,30 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     };
 
 
-    let reader_thread = std::thread::spawn(move || {
+    let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
         let read_records = |reader: &mut dyn fxread::FastxRead<Item = fxread::Record>| {
             for id in 0.. {
                 let mut vec = Vec::with_capacity(CHUNK_SIZE);
                 for _ in 0..CHUNK_SIZE {
-                    match reader.next() {
-                        Some(record) => vec.push((record, None)),
+                    match reader.next_record()? {
                         None => break,
+                        Some(record) => vec.push((record, None)),
                     }
                 }
                 if vec.is_empty() || input_tx.send(Chunk{ id, records: vec }).is_err() {
-                    return;
+                    return Ok(());
                 }
             }
+            unreachable!()
         };
 
         if file_name.len() > 0 {
             read_records(
-                initialize_reader(&file_name).unwrap().as_mut());
+                initialize_reader(&file_name)?.as_mut())
         } else {
             let input = stdin().lock();
             read_records(
-                initialize_stdin_reader(input).unwrap().as_mut());
+                initialize_stdin_reader(input)?.as_mut())
         }
     });
 
@@ -242,8 +248,10 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     .ok(); // result ignored because an error on output_tx.send() would come together with an io
            // error in the writer thread
 
-    reader_thread.join().unwrap();
+    reader_thread.join().unwrap()
+        .map_err(|e| eprintln!("Error reading the sequences: {}", e))?;
     writer_thread.join().unwrap()
+        .map_err(|e| eprintln!("Error writing the sequences: {}", e))
 }
 
 /// count the number of indexed kmers in a given read
@@ -280,40 +288,36 @@ pub fn back_to_sequences(in_fasta_reads: String,
     min_threshold: f32, 
     max_threshold: f32,
     stranded: bool,
-    query_reverse: bool) -> std::io::Result<()> {
+    query_reverse: bool) -> Result<(),()> {
       
     // check that inkmers and reads_file are non empty files:
     if in_fasta_reads.len() > 0 {
-        validate_non_empty_file(in_fasta_reads.clone());
+        validate_non_empty_file(in_fasta_reads.clone())?;
     }
-    validate_non_empty_file(in_fasta_kmers.clone());
+    validate_non_empty_file(in_fasta_kmers.clone())?;
 
-    
-    match index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded) {
+    let (kmer_set, kmer_size) = index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded)
+        .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
 
-        Ok((kmer_set, kmer_size)) => {
-            let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), min_threshold, max_threshold, stranded, query_reverse);
-            println!("Filtered sequences with exact kmer count are in file {}", out_fasta_reads);
-            
+    count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), min_threshold, max_threshold, stranded, query_reverse)?;
+    println!("Filtered sequences with exact kmer count are in file {}", out_fasta_reads);
 
-            // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
-            if out_txt_kmers.len() > 0 {
-                
-                // prints all kmers from kmer_set that have a count > 0
-                let mut output = File::create(out_txt_kmers.clone())?;
-                // let mut output = File::create(out_kmers_file);
-                for (kmer, count) in kmer_set.iter() {
-                    if count.get() > 0 {
-                        output.write_all(kmer)?;
-                        write!(output, " {}\n", count.get())?;
-                    }
+
+    // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
+    if out_txt_kmers.len() > 0 {
+        (|| -> io::Result<_> {
+            // prints all kmers from kmer_set that have a count > 0
+            let mut output = File::create(&out_txt_kmers)?;
+            for (kmer, count) in kmer_set.iter() {
+                if count.get() > 0 {
+                    output.write_all(kmer)?;
+                    write!(output, " {}\n", count.get())?;
                 }
-            println!("kmers with their number of occurrences in the original sequences are in file {}", out_txt_kmers);
             }
-        }
+            Ok(())
+        })().map_err(|e| eprintln!("Error writing the kmers file: {}", e))?;
 
-        Err(err) => eprintln!("Error indexing kmers: {}", err),
+        println!("kmers with their number of occurrences in the original sequences are in file {}", out_txt_kmers);
     }
     Ok(())
-
 }
