@@ -177,7 +177,8 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     };
 
     let (tx, rx) = std::sync::mpsc::sync_channel(1024);
-    let (_, result) = rayon::join(move ||{// lance deux threads 
+
+    let reader_thread = std::thread::spawn(move || {
         if file_name.len() > 0 {
             let reader = initialize_reader(&file_name).unwrap();
             for record in reader {
@@ -192,8 +193,8 @@ fn count_kmers_in_fasta_file_par(file_name: String,
                 tx.send(record).unwrap();
             }
         }
-    }, ||{
-        rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
+    });
+    rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
             if query_reverse {
                 record.rev_comp();  // reverse the sequence in place
             }
@@ -212,10 +213,9 @@ fn count_kmers_in_fasta_file_par(file_name: String,
                  }
             }
             Ok(())
-        }) // end of for each
-    }); // end of rayon join
-    result?;
+    })?; // end of for each
     assert!(output.lock().unwrap().buffer.is_empty());
+    reader_thread.join().unwrap();
     Ok(())
 }
 
