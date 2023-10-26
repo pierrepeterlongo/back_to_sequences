@@ -39,11 +39,12 @@ We queried: from 10,000 to 100 million reads, each of average length 350.
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
-| 10,000          | 2s   | 	2s | 7 GB |
-| 100,000         | 2s   | 	2s | 7 GB |
-| 1,000,000       | 7s  | 8s	 | 7 GB |
-| 10,000,000       | 23s  | 44s	 | 7 GB |
-| 100,000,000       | 3m41 | 6m34	 | 7 GB |
+| 10,000          | 0.9s   | 	0.6s | 7 GB |
+| 100,000         | 1.0s   | 	1.4s | 7 GB |
+| 1,000,000       | 5.3s  | 8.3s	 | 7 GB |
+| 10,000,000       | 31s  | 39s	 | 7 GB |
+| 100,000,000       | 5m39 | 6m04	 | 7 GB |
+| 200,000,000     | 10m40  | 12m57 | 0.13 GB  |
 
 ## Usage
 ### help
@@ -53,7 +54,7 @@ Extract sequences that contain some kmers
 Usage: back_to_sequences [OPTIONS] --in-sequences <IN_SEQUENCES> --in-kmers <IN_KMERS> --out-sequences <OUT_SEQUENCES>
 
 Options:
-      --in-sequences <IN_SEQUENCES>    Input fasta or fastq [.gz] file containing the original sequences (eg. reads)
+      --in-sequences <IN_SEQUENCES>    Input fasta or fastq [.gz] file containing the original sequences (eg. reads). THe stdin is used if not provided [default: ]
       --in-kmers <IN_KMERS>            Input fasta file containing the original kmers
       --out-sequences <OUT_SEQUENCES>  Output file containing the filtered original sequences (eg. reads). It will be automatically in fasta or fastq format depending on the input file
       --out-kmers <OUT_KMERS>          If provided, output text file containing the kmers that occur in the reads with their number of occurrences [default: ]

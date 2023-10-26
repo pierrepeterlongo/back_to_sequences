@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
-use std::io::{BufWriter,Write};
+use std::io::{BufWriter,Write, stdin};
 use std::io::{self};
 use auto_enums::auto_enum;
-use fxread::initialize_reader;
+use fxread::{initialize_reader,initialize_stdin_reader};
 use atomic_counter::{RelaxedCounter, AtomicCounter};
 use rayon::prelude::*;
 
@@ -160,9 +160,19 @@ fn count_kmers_in_fasta_file_par(file_name: String,
 
     let (tx, rx) = std::sync::mpsc::sync_channel(1024);
     let (_, result) = rayon::join(move ||{// lance deux threads 
-        let reader = initialize_reader(&file_name).unwrap();
-        for record in reader {
-            tx.send(record).unwrap();
+        if file_name.len() > 0 {
+            let reader = initialize_reader(&file_name).unwrap();
+            for record in reader {
+                tx.send(record).unwrap();
+            }
+        }
+        else {
+            let input = stdin().lock();
+            let reader = initialize_stdin_reader(input).unwrap();
+
+            for record in reader {
+                tx.send(record).unwrap();
+            }
         }
     }, ||{
         rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
@@ -228,7 +238,9 @@ pub fn back_to_sequences(in_fasta_reads: String,
     query_reverse: bool) -> std::io::Result<()> {
       
     // check that inkmers and reads_file are non empty files:
-    validate_non_empty_file(in_fasta_reads.clone());
+    if in_fasta_reads.len() > 0 {
+        validate_non_empty_file(in_fasta_reads.clone());
+    }
     validate_non_empty_file(in_fasta_kmers.clone());
 
     

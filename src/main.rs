@@ -10,8 +10,8 @@ use exact_count::back_to_sequences;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Input fasta or fastq [.gz] file containing the original sequences (eg. reads)
-    #[arg(long)]
+    /// Input fasta or fastq [.gz] file containing the original sequences (eg. reads). THe stdin is used if not provided
+    #[arg(long, default_value_t = String::from(""))]
     in_sequences: String, 
 
     /// Input fasta file containing the original kmers
