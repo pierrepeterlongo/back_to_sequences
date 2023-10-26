@@ -3,14 +3,13 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufWriter,Write, stdin};
 use std::io::{self};
+use std::num::NonZeroU8;
 use auto_enums::auto_enum;
 use fxread::{initialize_reader,initialize_stdin_reader};
 use atomic_counter::{RelaxedCounter, AtomicCounter};
 use rayon::prelude::*;
 
-
-
-fn base_complement(base: u8) -> u8
+fn base_complement(base: u8) -> Option<NonZeroU8>
 {
     match base {
         b'A' => b'T',
@@ -18,8 +17,10 @@ fn base_complement(base: u8) -> u8
         b'C' => b'G',
         b'G' => b'C',
         c if c < 128 => c,
-        c => panic!("cannot complement base (contains non-ascii byte: 0x{:x})", c),
-    }
+        // all non-ascii character yield None so that we abord in case we try to reverse complement
+        // a multibyte unicode character.
+        _ => 0,
+    }.try_into().ok()
 }
  
 /// Zero-copy object for normalizing a sequence
@@ -34,7 +35,22 @@ struct SequenceNormalizer<'a>
 {
     raw: &'a [u8],
     reverse_complement: bool,
- }
+}
+
+/// forward lookup-table for the SequenceNormalizer
+#[ctor::ctor]
+static FORWARD_MAP : [u8;256] = {
+    let mut a = [0;256];
+    a.iter_mut().enumerate().for_each(|(i, c)|{ *c = (i as u8).to_ascii_uppercase()});
+    a
+};
+/// reverse lookup-table for the SequenceNormalizer
+#[ctor::ctor]
+static REVERSE_MAP : [Option<NonZeroU8>;256] = {
+    let mut a = [None;256];
+    a.iter_mut().enumerate().for_each(|(i, c)|{ *c = base_complement((i as u8).to_ascii_uppercase())});
+    a
+};
  
 impl<'a> SequenceNormalizer<'a>
 {
@@ -56,9 +72,11 @@ impl<'a> SequenceNormalizer<'a>
     fn iter_impl(raw: &[u8] , reverse_complement: bool) -> impl Iterator<Item=u8> + '_
     {
         if reverse_complement {
-            raw.iter().rev().map(|c| base_complement(c.to_ascii_uppercase()))
+            raw.iter().rev().map(|c| {
+                REVERSE_MAP[*c as usize]
+                    .expect("cannot complement base (contains non-ascii byte: 0x{:x})").into()})
         } else {
-            raw.iter().map(|c| c.to_ascii_uppercase())
+            raw.iter().map(|c| FORWARD_MAP[*c as usize])
         }
     }
 
