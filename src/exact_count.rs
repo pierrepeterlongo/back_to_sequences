@@ -160,20 +160,12 @@ fn count_kmers_in_fasta_file_par(file_name: String,
 
     let (tx, rx) = std::sync::mpsc::sync_channel(1024);
     let (_, result) = rayon::join(move ||{// lance deux threads 
-        if file_name.len() > 0 {
-            let reader = initialize_reader(&file_name).unwrap();
-            for record in reader {
-                tx.send(record).unwrap();
-            }
-        }
-        else {
-            let input = stdin().lock();
-            let reader = initialize_stdin_reader(input).unwrap();
-
-            for record in reader {
-                tx.send(record).unwrap();
-            }
-        }
+        let reader = 
+            if file_name.len() > 0 { initialize_reader(&file_name).unwrap() } 
+            else { initialize_stdin_reader(stdin().lock()).unwrap() };
+        for record in reader {
+            tx.send(record).unwrap();
+        }   
     }, ||{
         rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
             if query_reverse {
@@ -237,10 +229,12 @@ pub fn back_to_sequences(in_fasta_reads: String,
     stranded: bool,
     query_reverse: bool) -> std::io::Result<()> {
       
-    // check that inkmers and reads_file are non empty files:
+    
+    // check that in_fasta_reads is a non empty file if it exists:
     if in_fasta_reads.len() > 0 {
         validate_non_empty_file(in_fasta_reads.clone());
     }
+    // check that in_fasta_kmers is a non empty file:
     validate_non_empty_file(in_fasta_kmers.clone());
 
     
