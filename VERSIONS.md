@@ -5,3 +5,11 @@
 * 0.2.3. 24/10/2023: accepted various optimizations from Anthony Baire
 * 0.2.4. 25/10/2023: added the max-threshold option
 * 0.2.5. 26/10/2023: added the possibility to read input sequences from stdin
+* 0.2.6. 27/10/2023: 
+    * implement uppercase and base_complement operations with lookup tables
+    * refactor the pipeline
+        * move the output file writer into a separate thread
+        * run the reader & writer threads outside the rayon threadpool (because they are not cpu-bound)
+        * split the work in chunks of 32 reads (this should greatly improve the throughput on machines with many cpus)
+    * Some cleaning in the error handling (remove silently ignored errors, propagate errors and avoid using panic!)
+    
