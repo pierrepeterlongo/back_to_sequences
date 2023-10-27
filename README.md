@@ -29,7 +29,7 @@ cargo install --path .
 
 A test can be performed by running `cd tiny_test; sh tiny_test.sh; cd -`.
  
-## Quick benchmark
+## Quick benchmark (v0.2.6)
 This benchmark is reproducible by running `generate_data.sh` and then `bench.sh` in the `benchs` folder. 
 Presented results were obtained on 
 * the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
@@ -41,12 +41,12 @@ We queried: from 10,000 to 200 million reads, each of length 100.
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
-| 10,000          | 0.9s   | 	0.6s | 0.13 GB |
-| 100,000         | 1.0s   | 	1.4s | 0.13 GB |
-| 1,000,000       | 5.3s  | 8.3s	 | 0.13 GB |
-| 10,000,000       | 31s  | 39s	 | 0.13 GB |
-| 100,000,000       | 5m39 | 6m04	 | 0.13 GB |
-| 200,000,000     | 10m40  | 12m57 | 0.13 GB  |
+| 10,000          | 0.7s   | 	0.6s | 0.13 GB |
+| 100,000         | 0.7s   | 	1.4s | 0.13 GB |
+| 1,000,000       | 3.1s  | 8.3s	 | 0.13 GB |
+| 10,000,000       | 8.9s  | 39s	 | 0.13 GB |
+| 100,000,000       | 52.6s | 6m04	 | 0.13 GB |
+| 200,000,000     | 1m41  | 12m57 | 0.13 GB  |
 
 ## Usage
 ### help
