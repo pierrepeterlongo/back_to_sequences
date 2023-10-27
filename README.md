@@ -9,9 +9,9 @@
 <!-- ![Old library - IA generated](k2s.jpg) -->
 ## Description
 
-Given a set of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the kmers.
+Given a set of $K$ kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the some of those kmers.
 
-Each sequence that shares at least a kmer with the indexed kmeres is output with its original header + the number of shared kmers + the ratio of shared kmers:
+A minimal ($m$) and a maximal ($M$) thresholds are proposed. A sequence whose percentage of kmers shared with $K$ are in $]m, M]$ is output with its original header + the number of shared kmers + the ratio of shared kmers:
 ```
 >original_header 20 6.13
 TGGATAAAAAGGCTGACGAAAGGTCTAGCTAAAATTGTCAGGTGCTCTCAGATAAAGCAGTAAGCGAGTTGGTGTTCGCTGAGCGTCGACTAGGCAACGTTAAAGCTATTTTAGGC...
@@ -24,26 +24,28 @@ In this case 20 kmers are shared with the indexed kmers. This represents 6.13% o
 ```bash
 git clone https://github.com/pierrepeterlongo/back_to_sequences.git
 cd back_to_sequences
-cargo install --path . --locked
+cargo install --path . 
 ```
+
+A test can be performed by running `cd tiny_test; sh tiny_test.sh; cd -`.
  
 ## Quick benchmark
-Reproducible by running `generate_data.sh` and then `bench.sh` in the `benchs` folder. 
+This benchmark is reproducible by running `generate_data.sh` and then `bench.sh` in the `benchs` folder. 
 Presented results were obtained on 
 * the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
 * and a MacBook, Apple M2 pro, 16 GB RAM, with 10 threads denoted by "mac" in the table below.
 
 We indexed: one million kmers (exactly 995,318) of length 31.
 
-We queried: from 10,000 to 100 million reads, each of average length 350.
+We queried: from 10,000 to 200 million reads, each of length 100.
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
-| 10,000          | 0.9s   | 	0.6s | 7 GB |
-| 100,000         | 1.0s   | 	1.4s | 7 GB |
-| 1,000,000       | 5.3s  | 8.3s	 | 7 GB |
-| 10,000,000       | 31s  | 39s	 | 7 GB |
-| 100,000,000       | 5m39 | 6m04	 | 7 GB |
+| 10,000          | 0.9s   | 	0.6s | 0.13 GB |
+| 100,000         | 1.0s   | 	1.4s | 0.13 GB |
+| 1,000,000       | 5.3s  | 8.3s	 | 0.13 GB |
+| 10,000,000       | 31s  | 39s	 | 0.13 GB |
+| 100,000,000       | 5m39 | 6m04	 | 0.13 GB |
 | 200,000,000     | 10m40  | 12m57 | 0.13 GB  |
 
 ## Usage
@@ -67,7 +69,8 @@ Options:
   -V, --version                        Print version
 ```
 
-### Example 
+### Examples
+#### Basic 
 ```bash
 back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta  --out-kmers counted_kmers.txt
 ```
@@ -77,7 +80,37 @@ The headers of each read is the same as in `reads.fasta`, plus the estimated rat
 
 If the `--out-kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `compacted_kmers.fasta` the number of times it was found in `filtered_reads.fasta` (displays only kmers whose counts are higher than 0).
 
-### Generate random data for testing
+#### Using filters
+```bash
+back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta  --out-kmers counted_kmers.txt --min-threshold 50 --max-threshold 70
+```
+
+In this case only sequeces from `reads.fasta` that have more than 50% and at most 70% of their kmers in `compacted_kmers.fasta` are output.
+
+#### Specifying strands
+
+```bash
+back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta --stranded
+```
+In this case, the kmers found in `compacted_kmers.fasta` are indexed in their original orientation, and kmers extracted from `reads.fasta` are queried in their original orientation. 
+
+Note that without the `--stranded` option, all kmers (indexed and queried) are considered in their canonical form.
+
+
+One may be interested in finding kmers from the reverse complement of the queried sequences. In this case we add the `--query-reverse` option together with the `--stranded` option:
+```bash
+back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta --stranded
+```
+
+#### Reading sequences from standard input: 
+
+```bash
+cat reads.fasta | back_to_sequences --in-kmers compacted_kmers.fasta --out-sequences filtered_reads.fasta 
+```
+Do not provide the `--in-sequences` if your input data are read from stdin.
+
+## Generate random data for testing
+You may be interested by generating a specific data set.
 ```bash
 # Generate 1 reference sequence of random length 50000 and minimum length 100
 python scripts/generate_random_fasta.py 1 50000 100 ref_seq.fasta

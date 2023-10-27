@@ -181,30 +181,23 @@ fn count_kmers_in_fasta_file_par(file_name: String,
 
 
     let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
-        let read_records = |reader: &mut dyn fxread::FastxRead<Item = fxread::Record>| {
-            for id in 0.. {
-                let mut vec = Vec::with_capacity(CHUNK_SIZE);
-                for _ in 0..CHUNK_SIZE {
-                    match reader.next_record()? {
-                        None => break,
-                        Some(record) => vec.push((record, None)),
-                    }
-                }
-                if vec.is_empty() || input_tx.send(Chunk{ id, records: vec }).is_err() {
-                    return Ok(());
+        let mut reader = 
+            if file_name.len() > 0 { initialize_reader(&file_name).unwrap() } 
+            else { initialize_stdin_reader(stdin().lock()).unwrap() };
+
+        for id in 0.. {
+            let mut vec = Vec::with_capacity(CHUNK_SIZE);
+            for _ in 0..CHUNK_SIZE {
+                match reader.next_record()? {
+                    None => break,
+                    Some(record) => vec.push((record, None)),
                 }
             }
-            unreachable!()
-        };
-
-        if file_name.len() > 0 {
-            read_records(
-                initialize_reader(&file_name)?.as_mut())
-        } else {
-            let input = stdin().lock();
-            read_records(
-                initialize_stdin_reader(input)?.as_mut())
+            if vec.is_empty() || input_tx.send(Chunk{ id, records: vec }).is_err() {
+                return Ok(());
+            }
         }
+        unreachable!()
     });
 
     let writer_thread = std::thread::spawn(move || -> io::Result<_> {
@@ -290,11 +283,13 @@ pub fn back_to_sequences(in_fasta_reads: String,
     stranded: bool,
     query_reverse: bool) -> Result<(),()> {
       
-    // check that inkmers and reads_file are non empty files:
+    
+    // check that in_fasta_reads is a non empty file if it exists:
     if in_fasta_reads.len() > 0 {
         validate_non_empty_file(in_fasta_reads.clone())?;
     }
     validate_non_empty_file(in_fasta_kmers.clone())?;
+    // check that in_fasta_kmers is a non empty file:
 
     let (kmer_set, kmer_size) = index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded)
         .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
