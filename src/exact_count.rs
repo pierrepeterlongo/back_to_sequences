@@ -3,14 +3,13 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufWriter,Write, stdin};
 use std::io::{self};
+use std::num::NonZeroU8;
 use auto_enums::auto_enum;
 use fxread::{initialize_reader,initialize_stdin_reader};
 use atomic_counter::{RelaxedCounter, AtomicCounter};
 use rayon::prelude::*;
 
-
-
-fn base_complement(base: u8) -> u8
+fn base_complement(base: u8) -> Option<NonZeroU8>
 {
     match base {
         b'A' => b'T',
@@ -18,8 +17,10 @@ fn base_complement(base: u8) -> u8
         b'C' => b'G',
         b'G' => b'C',
         c if c < 128 => c,
-        c => panic!("cannot complement base (contains non-ascii byte: 0x{:x})", c),
-    }
+        // all non-ascii character yield None so that we abord in case we try to reverse complement
+        // a multibyte unicode character.
+        _ => 0,
+    }.try_into().ok()
 }
  
 /// Zero-copy object for normalizing a sequence
@@ -34,7 +35,22 @@ struct SequenceNormalizer<'a>
 {
     raw: &'a [u8],
     reverse_complement: bool,
- }
+}
+
+/// forward lookup-table for the SequenceNormalizer
+#[ctor::ctor]
+static FORWARD_MAP : [u8;256] = {
+    let mut a = [0;256];
+    a.iter_mut().enumerate().for_each(|(i, c)|{ *c = (i as u8).to_ascii_uppercase()});
+    a
+};
+/// reverse lookup-table for the SequenceNormalizer
+#[ctor::ctor]
+static REVERSE_MAP : [Option<NonZeroU8>;256] = {
+    let mut a = [None;256];
+    a.iter_mut().enumerate().for_each(|(i, c)|{ *c = base_complement((i as u8).to_ascii_uppercase())});
+    a
+};
  
 impl<'a> SequenceNormalizer<'a>
 {
@@ -56,9 +72,11 @@ impl<'a> SequenceNormalizer<'a>
     fn iter_impl(raw: &[u8] , reverse_complement: bool) -> impl Iterator<Item=u8> + '_
     {
         if reverse_complement {
-            raw.iter().rev().map(|c| base_complement(c.to_ascii_uppercase()))
+            raw.iter().rev().map(|c| {
+                REVERSE_MAP[*c as usize]
+                    .expect("cannot complement base (contains non-ascii byte: 0x{:x})").into()})
         } else {
-            raw.iter().map(|c| c.to_ascii_uppercase())
+            raw.iter().map(|c| FORWARD_MAP[*c as usize])
         }
     }
 
@@ -74,25 +92,27 @@ impl<'a> SequenceNormalizer<'a>
 
 
 /// check that a file name corresponds to a non empty file:
-fn validate_non_empty_file(in_file: String) {
+fn validate_non_empty_file(in_file: String) -> Result<(), ()> {
     if let Ok(metadata) = fs::metadata(in_file.clone()) {
         // Check if the file exists
         if ! metadata.is_file() {
-            panic!("{:#} exists, but it's not a file.", in_file);
+            return Err(eprintln!("{:#} exists, but it's not a file.", in_file));
         }
     } else {
-        panic!("The {} file does not exist or there was an error checking its existence.", in_file);
+        return Err(eprintln!("The {} file does not exist or there was an error checking its existence.", in_file));
     }
+    Ok(())
 }
 
 /// index all kmers of size kmer_size in the fasta file
 /// returns a hashmap with the kmers as keys and their count as values, initialized to 0
-fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> Result<(HashMap<Vec<u8>, T>, usize), io::Error> {
+fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> anyhow::Result<(HashMap<Vec<u8>, T>, usize)> {
     let mut kmer_set = HashMap::new();
     let reverse_complement = if stranded { Some(false) } else { None };
 
-    let reader = initialize_reader(&file_name).unwrap();
-    for record in reader {
+    let mut reader = initialize_reader(&file_name)?;
+    loop {
+        let Some(record) = reader.next_record()? else { break };
         let acgt_sequence = record.seq();
         // for each kmer of the sequence, insert it in the kmer_set
         for i in 0..(acgt_sequence.len() - kmer_size + 1) {
@@ -123,74 +143,108 @@ fn count_kmers_in_fasta_file_par(file_name: String,
     min_threshold: f32, 
     max_threshold: f32,
     stranded: bool, 
-    query_reverse: bool) -> std::io::Result<()>{
+    query_reverse: bool) -> Result<(), ()>{
 
-    // structure for buffering and reordering the output
-    //
-    // Rayon::iter::ParallelBridge() does not preserve the original order of the items. We buffer
-    // the result in a hashmap and reorder them before output.
-    struct Output {
-        file: BufWriter<File>,
-        buffer: HashMap<usize, (fxread::Record, usize)>,
+    const CHUNK_SIZE: usize = 32; // number of records
+    const INPUT_CHANNEL_SIZE:  usize = 8; // in units of CHUNK_SIZE records
+    const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
+
+    struct Chunk {
         id: usize,
+        records: Vec<(fxread::Record, Option<usize>)>,
     }
-    let output = std::sync::Mutex::new(Output{
-        file: BufWriter::new(File::create(out_fasta)?),
-        buffer: HashMap::new(),
-        id: 0,
-    });
-    let output_record = |file: &mut BufWriter<_>, record: &fxread::Record, nb_shared_kmers| -> std::io::Result<()>
-    {
+
+    let (input_tx,   input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
+    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
+    
+    let mut output_file = BufWriter::new(
+        File::create(out_fasta).map_err(
+            |e| eprintln!("Error: failed to open the sequence file for writing: {}", e))?);
+
+    let mut output_record = move |(record, nb_shared_kmers): (fxread::Record, Option<usize>)| -> std::io::Result<()> {
         // round percent_shared_kmers to 3 decimals and transform to percents
-        let percent_shared_kmers = round((nb_shared_kmers as f32 / (record.seq().len() - kmer_size + 1) as f32) * 100.0, 2) ;
+        let percent_shared_kmers = round((nb_shared_kmers.unwrap() as f32 / (record.seq().len() - kmer_size + 1) as f32) * 100.0, 2) ;
         if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold { // supports the user defined thresholds
 
             let record_as_string = record.as_str().trim().as_bytes(); 
             let mut iter = record_as_string.split(|&x| x == b'\n');
 
-            file.write_all(iter.next().unwrap())?;   // write the original header of the record
-            write!(file, " {} {}\n", nb_shared_kmers, percent_shared_kmers)?; // append metrics
+            output_file.write_all(iter.next().unwrap())?;   // write the original header of the record
+            write!(output_file, " {} {}\n", nb_shared_kmers.unwrap(), percent_shared_kmers)?; // append metrics
             for line in iter {
-                file.write_all(line)?;
-                file.write_all(b"\n")?;
+                output_file.write_all(line)?;
+                output_file.write_all(b"\n")?;
             }
         } // end read contains at least one indexed kmer
         Ok(())
     };
 
-    let (tx, rx) = std::sync::mpsc::sync_channel(1024);
-    let (_, result) = rayon::join(move ||{// lance deux threads 
-        let reader = 
+
+    let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
+        let mut reader = 
             if file_name.len() > 0 { initialize_reader(&file_name).unwrap() } 
             else { initialize_stdin_reader(stdin().lock()).unwrap() };
-        for record in reader {
-            tx.send(record).unwrap();
-        }   
-    }, ||{
-        rx.into_iter().enumerate().par_bridge().try_for_each(|(id, mut record)| -> std::io::Result<()>{
+
+        for id in 0.. {
+            let mut vec = Vec::with_capacity(CHUNK_SIZE);
+            for _ in 0..CHUNK_SIZE {
+                match reader.next_record()? {
+                    None => break,
+                    Some(record) => vec.push((record, None)),
+                }
+            }
+            if vec.is_empty() || input_tx.send(Chunk{ id, records: vec }).is_err() {
+                return Ok(());
+            }
+        }
+        unreachable!()
+    });
+
+    let writer_thread = std::thread::spawn(move || -> io::Result<_> {
+
+        // buffer for reordering the output (because Rayon::iter::ParallelBridge() does not
+        // preserve the original order of the items)
+        let mut buffer = HashMap::<usize, Vec<_>>::new();
+
+        for id in 0.. {
+            let records = match buffer.remove(&id) {
+                Some(vec) => vec,
+                None => loop {
+                    match output_rx.recv() {
+                        Err(_) => {
+                            assert!(buffer.is_empty());
+                            return Ok(());
+                        },
+                        Ok(chunk) =>
+                            if chunk.id == id {
+                                break chunk.records;
+                            } else {
+                                buffer.insert(chunk.id, chunk.records);
+                            }
+                    }
+                },
+            };
+            records.into_iter().try_for_each(&mut output_record)?;
+        }
+        unreachable!()
+    });
+
+    input_rx.into_iter().par_bridge().try_for_each(move |mut chunk| {
+        for (record, nb_shared_kmers) in &mut chunk.records {
             if query_reverse {
                 record.rev_comp();  // reverse the sequence in place
             }
-            let nb_shared_kmers = count_shared_kmers_par(kmer_set, record.seq(), kmer_size, stranded);
+            *nb_shared_kmers = Some(count_shared_kmers_par(kmer_set, record.seq(), kmer_size, stranded));
+        }
+        output_tx.send(chunk)
+    })
+    .ok(); // result ignored because an error on output_tx.send() would come together with an io
+           // error in the writer thread
 
-            let mut out = output.lock().unwrap();
-            out.buffer.insert(id, (record, nb_shared_kmers));
-            assert!(id >= out.id);
-            for i in out.id.. {
-                match out.buffer.remove(&i) {
-                    None => break,
-                    Some((rec, nb)) => {
-                        output_record(&mut out.file, &rec, nb)?;
-                        out.id += 1;
-                    }
-                 }
-            }
-            Ok(())
-        }) // end of for each
-    }); // end of rayon join
-    result?;
-    assert!(output.lock().unwrap().buffer.is_empty());
-    Ok(())
+    reader_thread.join().unwrap()
+        .map_err(|e| eprintln!("Error reading the sequences: {}", e))?;
+    writer_thread.join().unwrap()
+        .map_err(|e| eprintln!("Error writing the sequences: {}", e))
 }
 
 /// count the number of indexed kmers in a given read
@@ -227,42 +281,38 @@ pub fn back_to_sequences(in_fasta_reads: String,
     min_threshold: f32, 
     max_threshold: f32,
     stranded: bool,
-    query_reverse: bool) -> std::io::Result<()> {
+    query_reverse: bool) -> Result<(),()> {
       
     
     // check that in_fasta_reads is a non empty file if it exists:
     if in_fasta_reads.len() > 0 {
-        validate_non_empty_file(in_fasta_reads.clone());
+        validate_non_empty_file(in_fasta_reads.clone())?;
     }
+    validate_non_empty_file(in_fasta_kmers.clone())?;
     // check that in_fasta_kmers is a non empty file:
-    validate_non_empty_file(in_fasta_kmers.clone());
 
-    
-    match index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded) {
+    let (kmer_set, kmer_size) = index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded)
+        .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
 
-        Ok((kmer_set, kmer_size)) => {
-            let _ = count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), min_threshold, max_threshold, stranded, query_reverse);
-            println!("Filtered sequences with exact kmer count are in file {}", out_fasta_reads);
-            
+    count_kmers_in_fasta_file_par(in_fasta_reads, &kmer_set, kmer_size, out_fasta_reads.clone(), min_threshold, max_threshold, stranded, query_reverse)?;
+    println!("Filtered sequences with exact kmer count are in file {}", out_fasta_reads);
 
-            // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
-            if out_txt_kmers.len() > 0 {
-                
-                // prints all kmers from kmer_set that have a count > 0
-                let mut output = File::create(out_txt_kmers.clone())?;
-                // let mut output = File::create(out_kmers_file);
-                for (kmer, count) in kmer_set.iter() {
-                    if count.get() > 0 {
-                        output.write_all(kmer)?;
-                        write!(output, " {}\n", count.get())?;
-                    }
+
+    // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
+    if out_txt_kmers.len() > 0 {
+        (|| -> io::Result<_> {
+            // prints all kmers from kmer_set that have a count > 0
+            let mut output = File::create(&out_txt_kmers)?;
+            for (kmer, count) in kmer_set.iter() {
+                if count.get() > 0 {
+                    output.write_all(kmer)?;
+                    write!(output, " {}\n", count.get())?;
                 }
-            println!("kmers with their number of occurrences in the original sequences are in file {}", out_txt_kmers);
             }
-        }
+            Ok(())
+        })().map_err(|e| eprintln!("Error writing the kmers file: {}", e))?;
 
-        Err(err) => eprintln!("Error indexing kmers: {}", err),
+        println!("kmers with their number of occurrences in the original sequences are in file {}", out_txt_kmers);
     }
     Ok(())
-
 }
