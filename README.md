@@ -9,7 +9,7 @@
 <!-- ![Old library - IA generated](k2s.jpg) -->
 ## Description
 
-Given a set of $K$ kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing the some of those kmers.
+Given a set $K$ of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing some of those kmers.
 
 A minimal ($m$) and a maximal ($M$) thresholds are proposed. A sequence whose percentage of kmers shared with $K$ are in $]m, M]$ is output with its original header + the number of shared kmers + the ratio of shared kmers:
 ```
@@ -29,7 +29,7 @@ cargo install --path .
 
 A test can be performed by running `cd tiny_test; sh tiny_test.sh; cd -`.
  
-## Quick benchmark (v0.2.6)
+## Quick benchmark (obtained with version v0.2.6)
 This benchmark is reproducible by running `generate_data.sh` and then `bench.sh` in the `benchs` folder. 
 Presented results were obtained on 
 * the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
@@ -37,7 +37,7 @@ Presented results were obtained on
 
 We indexed: one million kmers (exactly 995,318) of length 31.
 
-We queried: from 10,000 to 200 million reads, each of length 100.
+We queried: from 10,000 reads to 200 million reads, each of length 100.
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
@@ -131,3 +131,4 @@ python3 scripts/extract_random_sequences.py --input reads.fasta --min_size 31 --
 * [X] Parallelize the read extraction step
 * [ ] Thinks about a way to adapt this to protein sequences
 * [X] Add an option to set the size of the bloom filter used by kmindex
+* [ ] Provide a way to index and query more than one set $K$ of kmers
