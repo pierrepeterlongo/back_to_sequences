@@ -269,13 +269,14 @@ fn count_shared_kmers_par(kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCo
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
         SequenceNormalizer::new(kmer, reverse_complement).copy_to_slice(canonical_kmer);
-        if kmer_set.contains_key(canonical_kmer){
+        if let Some(kmer_counter) = kmer_set.get(canonical_kmer)
+        {
             shared_kmers_count += 1;
             // kmer_set[&canonical_kmer] += 1;
             // kmer_set.insert(canonical_kmer, 1 + kmer_set[&canonical_kmer] );
             
             // *kmer_set.get_mut(&canonical_kmer).unwrap().add(1);
-            kmer_set[canonical_kmer].inc();
+            kmer_counter.inc();
         }
     }
     shared_kmers_count
