@@ -37,7 +37,7 @@ Presented results were obtained on
 
 We indexed: one million kmers (exactly 995,318) of length 31.
 
-We queried: from 10,000 reads to 200 million reads, each of length 100.
+We queried: from 10,000 reads to 200 million reads (+ 1 billion on the cluster), each of length 100.
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
@@ -47,6 +47,7 @@ We queried: from 10,000 reads to 200 million reads, each of length 100.
 | 10,000,000      | 9.0s  | 11.2s	 | 0.13 GB |
 | 100,000,000     | 46.6s | 57.4	 | 0.13 GB |
 | 200,000,000     | 1m24  | 1m47     | 0.13 GB |
+| 1 billion       | 7m11  | -     | 0.13 GB |
 
 ## Usage
 ### Help
