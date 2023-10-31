@@ -12,4 +12,8 @@
         * run the reader & writer threads outside the rayon threadpool (because they are not cpu-bound)
         * split the work in chunks of 32 reads (this should greatly improve the throughput on machines with many cpus)
     * Some cleaning in the error handling (remove silently ignored errors, propagate errors and avoid using panic!)
+* 0.2.7. 31/10/2023: New optimizations
+    * optimisation: use a faster hash function (ahash)
+    * optimisation: remove redundant hashmap lookup
+    * optimisation: store the canonical kmer into a fixed-size slice
     

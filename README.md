@@ -19,7 +19,7 @@ TGGATAAAAAGGCTGACGAAAGGTCTAGCTAAAATTGTCAGGTGCTCTCAGATAAAGCAGTAAGCGAGTTGGTGTTCGCT
 In this case 20 kmers are shared with the indexed kmers. This represents 6.13% of the kmers in the sequence.
 
 
-## Install:
+## Install
 
 ```bash
 git clone https://github.com/pierrepeterlongo/back_to_sequences.git
@@ -29,7 +29,7 @@ cargo install --path .
 
 A test can be performed by running `cd tiny_test; sh tiny_test.sh; cd -`.
  
-## Quick benchmark (obtained with version v0.2.6)
+## Quick benchmark (obtained with version v0.2.7)
 This benchmark is reproducible by running `generate_data.sh` and then `bench.sh` in the `benchs` folder. 
 Presented results were obtained on 
 * the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
@@ -41,15 +41,15 @@ We queried: from 10,000 reads to 200 million reads, each of length 100.
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
-| 10,000          | 0.7s  | 	0.7s | 0.13 GB |
-| 100,000         | 0.7s  | 	0.9s | 0.13 GB |
-| 1,000,000       | 3.1s  | 3.9s	 | 0.13 GB |
-| 10,000,000      | 8.9s  | 14.2s	 | 0.13 GB |
-| 100,000,000     | 52.6s | 1m12	 | 0.13 GB |
-| 200,000,000     | 1m41  | 2m49 | 0.13 GB  |
+| 10,000          | 0.6s  | 	0.5s | 0.13 GB |
+| 100,000         | 1.2s  | 	0.8s | 0.13 GB |
+| 1,000,000       | 2.9s  | 3.5s	 | 0.13 GB |
+| 10,000,000      | 9.0s  | 11.2s	 | 0.13 GB |
+| 100,000,000     | 46.6s | 57.4	 | 0.13 GB |
+| 200,000,000     | 1m24  | 1m47     | 0.13 GB |
 
 ## Usage
-### help
+### Help
 ```	
 Extract sequences that contain some kmers
 
