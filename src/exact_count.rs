@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter,Write, stdin};
 use std::io::{self};
 use std::num::NonZeroU8;
+use ahash::AHashMap as HashMap;
 use auto_enums::auto_enum;
 use fxread::{initialize_reader,initialize_stdin_reader};
 use atomic_counter::{RelaxedCounter, AtomicCounter};
@@ -84,6 +84,17 @@ impl<'a> SequenceNormalizer<'a>
     fn iter(&self) -> impl Iterator<Item=u8> + '_
     {
         Self::iter_impl(self.raw, self.reverse_complement)
+    }
+
+    /// Copy the normalized sequence into a slice
+    ///
+    /// panics for the slice has a different length
+    fn copy_to_slice(&self, dest: &mut [u8])
+    {
+        assert_eq!(dest.len(), self.raw.len());
+        for (i, c) in self.iter().enumerate() {
+            dest[i] = c;
+        }
     }
 }
 
@@ -250,21 +261,22 @@ fn count_kmers_in_fasta_file_par(file_name: String,
 /// count the number of indexed kmers in a given read
 fn count_shared_kmers_par(kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>, read: &[u8], kmer_size: usize, stranded: bool) -> usize {
     let mut shared_kmers_count = 0;
-    let mut canonical_kmer = Vec::new();
     let reverse_complement = if stranded { Some(false) } else { None };
+
+    let mut buf = [0].repeat(kmer_size);
+    let canonical_kmer = buf.as_mut_slice();
 
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
-        canonical_kmer.clear();
-        canonical_kmer.extend(SequenceNormalizer::new(kmer, reverse_complement).iter());
-        if kmer_set.contains_key(&canonical_kmer){
+        SequenceNormalizer::new(kmer, reverse_complement).copy_to_slice(canonical_kmer);
+        if let Some(kmer_counter) = kmer_set.get(canonical_kmer)
+        {
             shared_kmers_count += 1;
             // kmer_set[&canonical_kmer] += 1;
             // kmer_set.insert(canonical_kmer, 1 + kmer_set[&canonical_kmer] );
             
             // *kmer_set.get_mut(&canonical_kmer).unwrap().add(1);
-            kmer_set[&canonical_kmer].inc();
-
+            kmer_counter.inc();
         }
     }
     shared_kmers_count
