@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::io::{BufWriter,Write, stdin};
 use std::io::{self};
 use std::num::NonZeroU8;
+use ahash::AHashMap as HashMap;
 use auto_enums::auto_enum;
 use fxread::{initialize_reader,initialize_stdin_reader};
 use atomic_counter::{RelaxedCounter, AtomicCounter};
