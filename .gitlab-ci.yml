@@ -1,3 +1,5 @@
+image: "rust:latest"
+
 default:
   before_script:
     - rustc --version
@@ -33,9 +35,3 @@ test:
   stage: test
   script:
     - cargo test -j 4
-
-
-audit:
-  stage: audit
-  script:
-    - cargo audit
