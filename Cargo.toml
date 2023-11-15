@@ -3,19 +3,43 @@ name = "back_to_sequences"
 version = "0.2.7"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = [
+	"Pierre Peterlongo <pierre.peterlongo@inria.fr>",
+	"Anthony Baire <Anthony.Baire@irisa.fr>",
+	"Pierre Marijon <pierre@marijon.fr>",
+	]
+description = "Back to sequences: find the origin of kmers"
+rust-version = "1.65"
+
+readme = "Readme.md"
+license-file = "LICENSE"
 
 [dependencies]
-anyhow = "1.0.75"
-auto_enums = "0.8.2"
-clap = { version = "4.4.3", features = ["derive","cargo"] }
-fxread = "0.2"
-atomic-counter = "1.0.1"
-rayon = "1.5.1"
-ctor = "0.2.5"
-ahash = "0.8.6"
+# Error management
+anyhow         = { version = "1" }
+
+# CLI parsing
+clap           = { version = "4", features = ["derive","cargo"] }
+
+# File parsing
+fxread         = { version = "0.2" }
+
+# Other
+auto_enums     = { version = "0.8" }
+atomic-counter = { version = "1" }
+rayon          = { version = "1" }
+ctor           = { version = "0.2" }
+ahash          = { version ="0.8.6" }
 
 
-[[bin]]
-name = "back_to_sequences"
-path = "src/main.rs"
+[profile.release]
+lto = 'thin'
+opt-level = 3
+overflow-checks = false
+panic = 'abort'
+incremental = false
+
+
+[profile.profiling]
+inherits = "release"
+debug = true
