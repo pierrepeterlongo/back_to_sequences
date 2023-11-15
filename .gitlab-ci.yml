@@ -1,0 +1,37 @@
+image: "rust:latest"
+
+default:
+  before_script:
+    - rustc --version
+    - cargo --version
+
+
+stages:
+  - check
+  - format
+  - test
+  - audit
+
+
+check:
+  stage: check
+  script:
+    - cargo check -j 4
+
+
+format:
+  stage: format
+  script:
+    - cargo fmt -- --check
+
+
+lint:
+  stage: format
+  script:
+    - cargo clippy --all-targets --all-features -- -D warnings
+
+
+test:
+  stage: test
+  script:
+    - cargo test -j 4
