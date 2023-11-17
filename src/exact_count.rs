@@ -138,13 +138,18 @@ fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -
         record.upper();
         let acgt_sequence = &record.seq();
         // for each kmer of the sequence, insert it in the kmer_set
+        if acgt_sequence.len() < kmer_size {
+            continue;
+        }
         for i in 0..(acgt_sequence.len() - kmer_size + 1) {
             let kmer = &acgt_sequence[i..(i + kmer_size)];
             if is_acgt(kmer) { //TODO if not: get the position of the last non acgt letter and jump to the next potential possible kmer
-                kmer_set.insert(
-                    SequenceNormalizer::new(kmer, reverse_complement).iter().collect(),
-                    Default::default(), // RelaxedCounter::new(0)
-                    );
+                if ! kmer_set.contains_key(kmer) {
+                    kmer_set.insert(    
+                        SequenceNormalizer::new(kmer, reverse_complement).iter().collect(),
+                        Default::default(), // RelaxedCounter::new(0)
+                        );
+                }
             }
         }
     }
@@ -281,6 +286,9 @@ fn count_shared_kmers_par(kmer_set:  &HashMap<Vec<u8>, atomic_counter::RelaxedCo
     let mut buf = [0].repeat(kmer_size);
     let canonical_kmer = buf.as_mut_slice();
 
+    if read.len() < kmer_size {
+        shared_kmers_count
+    }
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
         SequenceNormalizer::new(kmer, reverse_complement).copy_to_slice(canonical_kmer);
