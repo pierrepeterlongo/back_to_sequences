@@ -16,4 +16,7 @@
     * optimisation: use a faster hash function (ahash)
     * optimisation: remove redundant hashmap lookup
     * optimisation: store the canonical kmer into a fixed-size slice
+* 0.2.8. 17/11/2023: 
+    * Deal with lower case letters in the input sequences (all is converted to upper)
+    * no not consider kmers that contain non ACGT letters (indexing and querying)
     

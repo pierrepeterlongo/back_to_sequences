@@ -115,6 +115,17 @@ fn validate_non_empty_file(in_file: String) -> Result<(), ()> {
     Ok(())
 }
 
+/// given a kmer as a &[u8] check that it contains only ACGT letters
+/// return true if it is the case, false otherwise
+fn is_acgt(kmer: &[u8]) -> bool {
+    for &byte in kmer {
+        if byte != b'A' && byte != b'C' && byte != b'G' && byte != b'T' {
+            return false;
+        }
+    }
+    true
+}
+
 /// index all kmers of size kmer_size in the fasta file
 /// returns a hashmap with the kmers as keys and their count as values, initialized to 0
 fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -> anyhow::Result<(HashMap<Vec<u8>, T>, usize)> {
@@ -123,15 +134,18 @@ fn index_kmers<T:Default>(file_name: String, kmer_size: usize, stranded: bool) -
 
     let mut reader = initialize_reader(&file_name)?;
     loop {
-        let Some(record) = reader.next_record()? else { break };
-        let acgt_sequence = record.seq();
+        let Some(mut record) = reader.next_record()? else { break };
+        record.upper();
+        let acgt_sequence = &record.seq();
         // for each kmer of the sequence, insert it in the kmer_set
         for i in 0..(acgt_sequence.len() - kmer_size + 1) {
             let kmer = &acgt_sequence[i..(i + kmer_size)];
-            kmer_set.insert(
-                SequenceNormalizer::new(kmer, reverse_complement).iter().collect(),
-                Default::default(), // RelaxedCounter::new(0)
-                );
+            if is_acgt(kmer) { //TODO if not: get the position of the last non acgt letter and jump to the next potential possible kmer
+                kmer_set.insert(
+                    SequenceNormalizer::new(kmer, reverse_complement).iter().collect(),
+                    Default::default(), // RelaxedCounter::new(0)
+                    );
+            }
         }
     }
     println!("Indexed {} kmers, each of size {}", kmer_set.len(), kmer_size);
@@ -242,6 +256,7 @@ fn count_kmers_in_fasta_file_par(file_name: String,
 
     input_rx.into_iter().par_bridge().try_for_each(move |mut chunk| {
         for (record, nb_shared_kmers) in &mut chunk.records {
+            record.upper();
             if query_reverse {
                 record.rev_comp();  // reverse the sequence in place
             }
