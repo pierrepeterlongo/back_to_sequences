@@ -1,6 +1,6 @@
 [package]
 name = "back_to_sequences"
-version = "0.2.9"
+version = "0.2.10"
 edition = "2021"
 
 authors = [
@@ -29,7 +29,8 @@ auto_enums     = { version = "0.8" }
 atomic-counter = { version = "1" }
 rayon          = { version = "1" }
 ctor           = { version = "0.2" }
-ahash          = { version ="0.8.6" }
+ahash          = { version = "0.8.6" }
+entropy		   = { version = "0.4"}
 
 
 [profile.release]

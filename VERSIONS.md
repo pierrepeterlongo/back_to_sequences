@@ -20,4 +20,5 @@
     * Deal with lower case letters in the input sequences (all is converted to upper)
     * no not consider kmers that contain non ACGT letters (indexing and querying)
 * 0.2.9. 17/11/2023: merge branch "cleaning". 
+* 0.2.10. 19/11/2023: do not index low complexity kmers (e.g. AAAAAA)
     

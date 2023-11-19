@@ -135,6 +135,7 @@ pub fn kmers_in_fasta_file_par(
         .par_bridge()
         .try_for_each(move |mut chunk| {
             for (record, nb_shared_kmers) in &mut chunk.records {
+                record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }

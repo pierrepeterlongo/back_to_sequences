@@ -10,7 +10,6 @@ use crate::consts::REVERSE_MAP;
 
 /// Zero-copy object for normalizing a sequence
 ///
-/// - converts to uppercase ascii
 /// - optionally reverse complements the sequence
 ///
 /// To avoid extra memory allocations, the original slice is kept in place and the resulting
