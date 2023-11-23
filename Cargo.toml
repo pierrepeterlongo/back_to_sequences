@@ -29,9 +29,12 @@ auto_enums     = { version = "0.8" }
 atomic-counter = { version = "1" }
 rayon          = { version = "1" }
 ctor           = { version = "0.2" }
-ahash          = { version = "0.8.6" }
-entropy		   = { version = "0.4"}
+ahash          = { version = "0.8.6"}
+entropy	       = { version = "0.4"}
 
+[dev-dependencies]
+# temp file for test
+tempfile       = { version = "3" }
 
 [profile.release]
 lto = 'thin'
