@@ -1,7 +1,7 @@
 //! Kmer hash declarations
 
 /* std use */
-use std::io::Write as _;
+use std::io::{ErrorKind, Read, Write as _};
 
 /* crates use */
 use ahash::AHashMap as HashMap;
@@ -39,7 +39,7 @@ pub struct KmerCount<T> {
 
 impl<T> KmerCount<T> {
     /// Intialize a new KmerCounter
-    pub fn from_path<P>(filename: P, kmer_size: usize, stranded: bool) -> anyhow::Result<Self>
+    pub fn from_fasta<P>(filename: P, kmer_size: usize, stranded: bool) -> anyhow::Result<Self>
     where
         P: AsRef<std::path::Path>,
         T: std::default::Default,
@@ -284,6 +284,58 @@ impl KmerCount<atomic_counter::RelaxedCounter> {
 
         Ok(())
     }
+
+    /// Write content of hashmap in back_to_sequence format
+    pub fn to_b2s<P>(&self, path: P) -> anyhow::Result<()>
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let mut output = std::io::BufWriter::new(std::fs::File::create(path)?);
+
+        output.write_all(&(self.kmer_size as u64).to_le_bytes())?;
+        for (kmer, count) in self.inner.iter() {
+            output.write_all(kmer)?;
+            output.write_all(&(count.get() as u64).to_le_bytes())?;
+        }
+
+        Ok(())
+    }
+
+    /// Read content of hashmap in back_to_sequence format
+    pub fn from_b2s<P>(path: P) -> anyhow::Result<Self>
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let mut inner = ahash::AHashMap::new();
+
+        let mut input = std::io::BufReader::new(std::fs::File::open(path)?);
+
+        let mut buffer = [0; 8];
+        input.read_exact(&mut buffer)?;
+        let kmer_size = usize::from_le_bytes(buffer);
+
+        let mut kmer_buffer = vec![0; kmer_size];
+        let mut count_buffer = vec![0; 8];
+        loop {
+            match input.read_exact(&mut kmer_buffer) {
+                Ok(_) => (),
+                Err(e) => match e.kind() {
+                    ErrorKind::UnexpectedEof => break,
+                    _ => return Err(e.into()),
+                },
+            }
+            input.read_exact(&mut count_buffer)?;
+
+            inner.insert(
+                kmer_buffer.clone(),
+                atomic_counter::RelaxedCounter::new(usize::from_le_bytes(
+                    count_buffer.clone().try_into().unwrap(),
+                )),
+            );
+        }
+
+        Ok(KmerCount { inner, kmer_size })
+    }
 }
 
 impl<T> AsRef<ahash::AHashMap<Vec<u8>, T>> for KmerCount<T> {
@@ -304,7 +356,6 @@ mod tests {
     use atomic_counter::AtomicCounter;
 
     use std::convert::AsRef as _;
-    use std::io::Read as _;
 
     const FASTA_FILE: &[u8] = b">random_seq 0
 GGACTGAGGAGGATACACCTATGGA
@@ -328,123 +379,13 @@ GGTGCATTCATAGTAGCTGCAGAAA
 ATGTTCGGACATGCCCCTATTGGGG
 ";
 
-    #[test]
-    fn canonical_from_path() -> anyhow::Result<()> {
-        let mut input = tempfile::Builder::new().suffix(".fasta").tempfile()?;
-        input.write_all(FASTA_FILE)?;
-
-        let kmer_count: KmerCount<u64> = KmerCount::<u64>::from_path(input.path(), 5, false)?;
-        let mut kmers: Vec<Vec<u8>> = kmer_count.as_ref().keys().map(|x| x.to_vec()).collect();
-        kmers.sort();
-
-        assert_eq!(
-            kmers,
-            vec![
-                b"AAACT", b"AAAGT", b"AACAT", b"AACGC", b"AACGG", b"AACTT", b"AAGGC", b"AAGTC",
-                b"AATAG", b"AATCT", b"AATGC", b"AATGG", b"AATTG", b"ACATG", b"ACCAT", b"ACCGT",
-                b"ACCTA", b"ACCTG", b"ACGAT", b"ACGCA", b"ACGCG", b"ACGCT", b"ACGGG", b"ACTAT",
-                b"ACTGA", b"ACTGC", b"ACTTA", b"ACTTG", b"AGAAT", b"AGACG", b"AGAGC", b"AGATA",
-                b"AGCAG", b"AGCCT", b"AGCGA", b"AGCTA", b"AGCTG", b"AGGAT", b"AGGTC", b"AGGTG",
-                b"AGTAA", b"AGTAG", b"AGTAT", b"AGTCA", b"AGTCC", b"AGTTA", b"ATACA", b"ATAGA",
-                b"ATAGG", b"ATCAA", b"ATCGA", b"ATCGC", b"ATCTA", b"ATCTC", b"ATCTG", b"ATGAA",
-                b"ATGCA", b"ATGCC", b"ATGGA", b"ATGTA", b"ATGTC", b"ATTAC", b"ATTAG", b"ATTCA",
-                b"ATTGA", b"ATTGC", b"ATTGG", b"CAAAG", b"CAATA", b"CAATC", b"CAGAA", b"CAGAG",
-                b"CAGCA", b"CAGCG", b"CAGTA", b"CAGTC", b"CATAA", b"CATAG", b"CATGC", b"CATTA",
-                b"CATTC", b"CCATA", b"CCCTA", b"CCGAA", b"CCGTC", b"CCTCA", b"CCTGC", b"CGAAC",
-                b"CGACG", b"CGATA", b"CGATC", b"CGCAA", b"CGCAG", b"CGGAC", b"CGGCA", b"CGTCA",
-                b"CGTTA", b"CTATC", b"CTCAC", b"CTCAG", b"CTCTA", b"CTGAA", b"CTGCA", b"CTGCC",
-                b"CTTAA", b"CTTGA", b"CTTTA", b"GAACA", b"GAATC", b"GACGA", b"GACGC", b"GAGAC",
-                b"GAGCC", b"GATAC", b"GATCA", b"GCACC", b"GCAGA", b"GCAGC", b"GCGAC", b"GCGTA",
-                b"GCTAC", b"GCTGA", b"GGACA", b"GGACC", b"GGATA", b"GGCAC", b"GGGCA", b"GGTGA",
-                b"GTAAA", b"GTAAC", b"GTCAA", b"GTCCA", b"GTGCA", b"GTGTA", b"GTTAA", b"GTTTA",
-                b"TACTA", b"TATGA", b"TCAAA", b"TCCGA", b"TCGCA", b"TCTAA", b"TCTCA", b"TGAAA",
-                b"TGCAA", b"TGTAA"
-            ]
-        );
-
-        let counts: Vec<u64> = kmer_count.as_ref().values().cloned().collect();
-        assert_eq!(counts, vec![0; counts.len()]);
-        Ok(())
-    }
-
-    #[test]
-    fn stranded_from_path() -> anyhow::Result<()> {
-        let mut input = tempfile::Builder::new().suffix(".fasta").tempfile()?;
-        input.write_all(FASTA_FILE)?;
-
-        let kmer_count: KmerCount<u64> = KmerCount::<u64>::from_path(input.path(), 5, true)?;
-        let mut kmers: Vec<Vec<u8>> = kmer_count.as_ref().keys().map(|x| x.to_vec()).collect();
-        kmers.sort();
-
-        assert_eq!(
-            kmers,
-            vec![
-                b"AACGC", b"AACGG", b"AACTT", b"AAGGC", b"AAGTT", b"AATCT", b"ACATG", b"ACCTA",
-                b"ACGCG", b"ACGCT", b"ACGGT", b"ACTGA", b"ACTTA", b"ACTTT", b"AGAAT", b"AGATA",
-                b"AGATT", b"AGCAG", b"AGCTG", b"AGGAT", b"AGGCT", b"AGGTC", b"AGTAA", b"AGTAG",
-                b"AGTTT", b"ATACA", b"ATACT", b"ATAGT", b"ATCGA", b"ATCGC", b"ATCGT", b"ATCTA",
-                b"ATGCA", b"ATGCC", b"ATGGA", b"ATGGT", b"ATGTT", b"ATTAC", b"ATTAG", b"ATTCA",
-                b"ATTGA", b"ATTGC", b"ATTGG", b"CAAGT", b"CAATT", b"CACCT", b"CAGAA", b"CAGAT",
-                b"CAGCA", b"CAGGT", b"CAGTA", b"CATAG", b"CATGC", b"CATTA", b"CATTC", b"CCATT",
-                b"CCCGT", b"CCCTA", b"CCGTC", b"CCTAT", b"CGACG", b"CGCTG", b"CGGAC", b"CGGCA",
-                b"CGTCA", b"CGTCT", b"CTATC", b"CTATG", b"CTATT", b"CTCTG", b"CTGAA", b"CTGAG",
-                b"CTGCA", b"CTGCC", b"CTGCG", b"CTTAA", b"CTTTA", b"CTTTG", b"GAATC", b"GACAT",
-                b"GACGC", b"GACTG", b"GACTT", b"GAGAT", b"GATAC", b"GATCG", b"GATTG", b"GCAAT",
-                b"GCAGA", b"GCAGC", b"GCAGG", b"GCAGT", b"GCATT", b"GCGAC", b"GCGTA", b"GCTCT",
-                b"GCTGA", b"GCTGC", b"GGACA", b"GGACT", b"GGATA", b"GGCAG", b"GGCTC", b"GGTCC",
-                b"GGTGA", b"GGTGC", b"GTAAC", b"GTAGC", b"GTCAA", b"GTCCA", b"GTCTC", b"GTGAG",
-                b"GTGCA", b"GTGCC", b"GTTCG", b"GTTTA", b"TAACG", b"TAACT", b"TACAC", b"TACAT",
-                b"TAGAG", b"TAGCT", b"TAGTA", b"TATCG", b"TATGG", b"TATTG", b"TCAAG", b"TCATA",
-                b"TCCAT", b"TCGCT", b"TCGGA", b"TCGTC", b"TCTAT", b"TCTGC", b"TGAAA", b"TGACT",
-                b"TGAGA", b"TGAGG", b"TGATC", b"TGCAA", b"TGCAG", b"TGCAT", b"TGCCC", b"TGCGA",
-                b"TGCGT", b"TGTTC", b"TTAAC", b"TTACA", b"TTACT", b"TTAGA", b"TTATG", b"TTCAT",
-                b"TTCGG", b"TTGAC", b"TTGAT", b"TTGCG", b"TTTAC", b"TTTGA"
-            ]
-        );
-
-        let counts: Vec<u64> = kmer_count.as_ref().values().cloned().collect();
-        assert_eq!(counts, vec![0; counts.len()]);
-        Ok(())
-    }
-
-    #[test]
-    fn canonical_filter_path() -> anyhow::Result<()> {
-        let mut kmers_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
-        kmers_in.write_all(FASTA_FILE)?;
-
-        let mut reads_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
-        reads_in.write_all(FASTA_FILE)?;
-        reads_in.write_all(FASTA_FILE)?;
-
-        let output = tempfile::Builder::new().suffix(".fasta").tempfile()?;
-
-        let kmer_count: KmerCount<atomic_counter::RelaxedCounter> =
-            KmerCount::from_path(kmers_in.path(), 5, false)?;
-        let _ = kmer_count.filter_path(
-            Some(reads_in.path()),
-            output.path(),
-            0.0,
-            100.0,
-            false,
-            false,
-        );
-        let mut counts: Vec<usize> = kmer_count.as_ref().values().map(|x| x.get()).collect();
-        counts.sort();
-
-        assert_eq!(
-            counts,
-            vec![
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-                4, 6, 6, 6, 6, 8
-            ]
-        );
-
-        Ok(())
-    }
+    const COUNTS: &[usize] = &[
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 6, 6, 6, 8,
+    ];
 
     const COUNT_OUTPUT: &[u8] = b"AAACT 2
 AAAGT 2
@@ -595,6 +536,114 @@ TGTAA 2
 ";
 
     #[test]
+    fn canonical_from_fasta() -> anyhow::Result<()> {
+        let mut input = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+        input.write_all(FASTA_FILE)?;
+
+        let kmer_count: KmerCount<u64> = KmerCount::<u64>::from_fasta(input.path(), 5, false)?;
+        let mut kmers: Vec<Vec<u8>> = kmer_count.as_ref().keys().map(|x| x.to_vec()).collect();
+        kmers.sort();
+
+        assert_eq!(
+            kmers,
+            vec![
+                b"AAACT", b"AAAGT", b"AACAT", b"AACGC", b"AACGG", b"AACTT", b"AAGGC", b"AAGTC",
+                b"AATAG", b"AATCT", b"AATGC", b"AATGG", b"AATTG", b"ACATG", b"ACCAT", b"ACCGT",
+                b"ACCTA", b"ACCTG", b"ACGAT", b"ACGCA", b"ACGCG", b"ACGCT", b"ACGGG", b"ACTAT",
+                b"ACTGA", b"ACTGC", b"ACTTA", b"ACTTG", b"AGAAT", b"AGACG", b"AGAGC", b"AGATA",
+                b"AGCAG", b"AGCCT", b"AGCGA", b"AGCTA", b"AGCTG", b"AGGAT", b"AGGTC", b"AGGTG",
+                b"AGTAA", b"AGTAG", b"AGTAT", b"AGTCA", b"AGTCC", b"AGTTA", b"ATACA", b"ATAGA",
+                b"ATAGG", b"ATCAA", b"ATCGA", b"ATCGC", b"ATCTA", b"ATCTC", b"ATCTG", b"ATGAA",
+                b"ATGCA", b"ATGCC", b"ATGGA", b"ATGTA", b"ATGTC", b"ATTAC", b"ATTAG", b"ATTCA",
+                b"ATTGA", b"ATTGC", b"ATTGG", b"CAAAG", b"CAATA", b"CAATC", b"CAGAA", b"CAGAG",
+                b"CAGCA", b"CAGCG", b"CAGTA", b"CAGTC", b"CATAA", b"CATAG", b"CATGC", b"CATTA",
+                b"CATTC", b"CCATA", b"CCCTA", b"CCGAA", b"CCGTC", b"CCTCA", b"CCTGC", b"CGAAC",
+                b"CGACG", b"CGATA", b"CGATC", b"CGCAA", b"CGCAG", b"CGGAC", b"CGGCA", b"CGTCA",
+                b"CGTTA", b"CTATC", b"CTCAC", b"CTCAG", b"CTCTA", b"CTGAA", b"CTGCA", b"CTGCC",
+                b"CTTAA", b"CTTGA", b"CTTTA", b"GAACA", b"GAATC", b"GACGA", b"GACGC", b"GAGAC",
+                b"GAGCC", b"GATAC", b"GATCA", b"GCACC", b"GCAGA", b"GCAGC", b"GCGAC", b"GCGTA",
+                b"GCTAC", b"GCTGA", b"GGACA", b"GGACC", b"GGATA", b"GGCAC", b"GGGCA", b"GGTGA",
+                b"GTAAA", b"GTAAC", b"GTCAA", b"GTCCA", b"GTGCA", b"GTGTA", b"GTTAA", b"GTTTA",
+                b"TACTA", b"TATGA", b"TCAAA", b"TCCGA", b"TCGCA", b"TCTAA", b"TCTCA", b"TGAAA",
+                b"TGCAA", b"TGTAA"
+            ]
+        );
+
+        let counts: Vec<u64> = kmer_count.as_ref().values().cloned().collect();
+        assert_eq!(counts, vec![0; counts.len()]);
+        Ok(())
+    }
+
+    #[test]
+    fn stranded_from_fasta() -> anyhow::Result<()> {
+        let mut input = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+        input.write_all(FASTA_FILE)?;
+
+        let kmer_count: KmerCount<u64> = KmerCount::<u64>::from_fasta(input.path(), 5, true)?;
+        let mut kmers: Vec<Vec<u8>> = kmer_count.as_ref().keys().map(|x| x.to_vec()).collect();
+        kmers.sort();
+
+        assert_eq!(
+            kmers,
+            vec![
+                b"AACGC", b"AACGG", b"AACTT", b"AAGGC", b"AAGTT", b"AATCT", b"ACATG", b"ACCTA",
+                b"ACGCG", b"ACGCT", b"ACGGT", b"ACTGA", b"ACTTA", b"ACTTT", b"AGAAT", b"AGATA",
+                b"AGATT", b"AGCAG", b"AGCTG", b"AGGAT", b"AGGCT", b"AGGTC", b"AGTAA", b"AGTAG",
+                b"AGTTT", b"ATACA", b"ATACT", b"ATAGT", b"ATCGA", b"ATCGC", b"ATCGT", b"ATCTA",
+                b"ATGCA", b"ATGCC", b"ATGGA", b"ATGGT", b"ATGTT", b"ATTAC", b"ATTAG", b"ATTCA",
+                b"ATTGA", b"ATTGC", b"ATTGG", b"CAAGT", b"CAATT", b"CACCT", b"CAGAA", b"CAGAT",
+                b"CAGCA", b"CAGGT", b"CAGTA", b"CATAG", b"CATGC", b"CATTA", b"CATTC", b"CCATT",
+                b"CCCGT", b"CCCTA", b"CCGTC", b"CCTAT", b"CGACG", b"CGCTG", b"CGGAC", b"CGGCA",
+                b"CGTCA", b"CGTCT", b"CTATC", b"CTATG", b"CTATT", b"CTCTG", b"CTGAA", b"CTGAG",
+                b"CTGCA", b"CTGCC", b"CTGCG", b"CTTAA", b"CTTTA", b"CTTTG", b"GAATC", b"GACAT",
+                b"GACGC", b"GACTG", b"GACTT", b"GAGAT", b"GATAC", b"GATCG", b"GATTG", b"GCAAT",
+                b"GCAGA", b"GCAGC", b"GCAGG", b"GCAGT", b"GCATT", b"GCGAC", b"GCGTA", b"GCTCT",
+                b"GCTGA", b"GCTGC", b"GGACA", b"GGACT", b"GGATA", b"GGCAG", b"GGCTC", b"GGTCC",
+                b"GGTGA", b"GGTGC", b"GTAAC", b"GTAGC", b"GTCAA", b"GTCCA", b"GTCTC", b"GTGAG",
+                b"GTGCA", b"GTGCC", b"GTTCG", b"GTTTA", b"TAACG", b"TAACT", b"TACAC", b"TACAT",
+                b"TAGAG", b"TAGCT", b"TAGTA", b"TATCG", b"TATGG", b"TATTG", b"TCAAG", b"TCATA",
+                b"TCCAT", b"TCGCT", b"TCGGA", b"TCGTC", b"TCTAT", b"TCTGC", b"TGAAA", b"TGACT",
+                b"TGAGA", b"TGAGG", b"TGATC", b"TGCAA", b"TGCAG", b"TGCAT", b"TGCCC", b"TGCGA",
+                b"TGCGT", b"TGTTC", b"TTAAC", b"TTACA", b"TTACT", b"TTAGA", b"TTATG", b"TTCAT",
+                b"TTCGG", b"TTGAC", b"TTGAT", b"TTGCG", b"TTTAC", b"TTTGA"
+            ]
+        );
+
+        let counts: Vec<u64> = kmer_count.as_ref().values().cloned().collect();
+        assert_eq!(counts, vec![0; counts.len()]);
+        Ok(())
+    }
+
+    #[test]
+    fn canonical_filter_path() -> anyhow::Result<()> {
+        let mut kmers_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+        kmers_in.write_all(FASTA_FILE)?;
+
+        let mut reads_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+        reads_in.write_all(FASTA_FILE)?;
+        reads_in.write_all(FASTA_FILE)?;
+
+        let output = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+
+        let kmer_count: KmerCount<atomic_counter::RelaxedCounter> =
+            KmerCount::from_fasta(kmers_in.path(), 5, false)?;
+        let _ = kmer_count.filter_path(
+            Some(reads_in.path()),
+            output.path(),
+            0.0,
+            100.0,
+            false,
+            false,
+        );
+        let mut counts: Vec<usize> = kmer_count.as_ref().values().map(|x| x.get()).collect();
+        counts.sort();
+
+        assert_eq!(counts, COUNTS);
+
+        Ok(())
+    }
+
+    #[test]
     fn to_csv() -> anyhow::Result<()> {
         let mut kmers_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
         kmers_in.write_all(FASTA_FILE)?;
@@ -606,7 +655,7 @@ TGTAA 2
         let output = tempfile::Builder::new().suffix(".fasta").tempfile()?;
 
         let kmer_count: KmerCount<atomic_counter::RelaxedCounter> =
-            KmerCount::from_path(kmers_in.path(), 5, false)?;
+            KmerCount::from_fasta(kmers_in.path(), 5, false)?;
         let _ = kmer_count.filter_path(
             Some(reads_in.path()),
             output.path(),
@@ -632,6 +681,76 @@ TGTAA 2
         result.sort();
 
         assert_eq!(result, truth);
+
+        Ok(())
+    }
+
+    #[test]
+    fn to_from_b2s() -> anyhow::Result<()> {
+        let mut kmers_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+        kmers_in.write_all(FASTA_FILE)?;
+        let mut b2s_out = tempfile::Builder::new().suffix(".b2s").tempfile()?;
+
+        let from_fasta = KmerCount::from_fasta(kmers_in.path(), 5, false)?;
+
+        from_fasta.to_b2s(b2s_out.path())?;
+
+        let mut content = Vec::new();
+        b2s_out.read_to_end(&mut content)?;
+
+        let from_b2s = KmerCount::from_b2s(b2s_out)?;
+
+        let mut kmers_fasta: Vec<Vec<u8>> =
+            from_fasta.as_ref().keys().map(|x| x.to_vec()).collect();
+        kmers_fasta.sort();
+
+        let mut kmers_b2s: Vec<Vec<u8>> = from_b2s.as_ref().keys().map(|x| x.to_vec()).collect();
+        kmers_b2s.sort();
+
+        assert_eq!(kmers_fasta, kmers_b2s);
+
+        let mut counts_fasta: Vec<usize> = from_fasta.as_ref().values().map(|x| x.get()).collect();
+        counts_fasta.sort();
+
+        let mut counts_b2s: Vec<usize> = from_b2s.as_ref().values().map(|x| x.get()).collect();
+        counts_b2s.sort();
+
+        assert_eq!(counts_fasta, counts_b2s);
+
+        Ok(())
+    }
+
+    #[test]
+    fn b2s_keep_count() -> anyhow::Result<()> {
+        let mut kmers_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+        kmers_in.write_all(FASTA_FILE)?;
+
+        let mut reads_in = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+        reads_in.write_all(FASTA_FILE)?;
+        reads_in.write_all(FASTA_FILE)?;
+
+        let output = tempfile::Builder::new().suffix(".fasta").tempfile()?;
+
+        let kmer_count: KmerCount<atomic_counter::RelaxedCounter> =
+            KmerCount::from_fasta(kmers_in.path(), 5, false)?;
+        let _ = kmer_count.filter_path(
+            Some(reads_in.path()),
+            output.path(),
+            0.0,
+            100.0,
+            false,
+            false,
+        );
+
+        let b2s_out = tempfile::Builder::new().suffix(".b2s").tempfile()?;
+        kmer_count.to_b2s(b2s_out.path())?;
+
+        let new_kmer_count = KmerCount::from_b2s(b2s_out.path())?;
+
+        let mut counts: Vec<usize> = new_kmer_count.as_ref().values().map(|x| x.get()).collect();
+        counts.sort();
+
+        assert_eq!(counts, COUNTS);
 
         Ok(())
     }

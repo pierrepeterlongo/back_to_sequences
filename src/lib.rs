@@ -36,7 +36,7 @@ pub fn back_to_sequences(
     // check that in_fasta_kmers is a non empty file:
 
     let kmer_set =
-        kmer_hash::KmerCount::<RelaxedCounter>::from_path(in_fasta_kmers, kmer_size, stranded)
+        kmer_hash::KmerCount::<RelaxedCounter>::from_fasta(in_fasta_kmers, kmer_size, stranded)
             .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
 
     if in_fasta_reads.is_empty() {
