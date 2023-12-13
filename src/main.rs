@@ -35,6 +35,7 @@ fn main() {
             args.max_threshold,
             args.stranded,
             args.query_reverse,
+            args.no_low_complexity,
         )
     })()
     .map_err(|()| std::process::exit(1))

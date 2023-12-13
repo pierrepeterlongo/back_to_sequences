@@ -177,16 +177,11 @@ pub fn shared_kmers_par(
     if read.len() < kmer_size {
         return 0;
     }
-
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
         SequenceNormalizer::new(kmer, reverse_complement).copy_to_slice(canonical_kmer);
         if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
             shared_kmers_count += 1;
-            // kmer_set[&canonical_kmer] += 1;
-            // kmer_set.insert(canonical_kmer, 1 + kmer_set[&canonical_kmer] );
-
-            // *kmer_set.get_mut(&canonical_kmer).unwrap().add(1);
             kmer_counter.inc();
         }
     }

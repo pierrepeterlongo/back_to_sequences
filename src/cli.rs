@@ -51,6 +51,10 @@ pub struct Args {
     /// Query the reverse complement of reads. Useless without the --stranded option
     #[arg(long, default_value_t = false)]
     pub query_reverse: bool,
+
+    /// Do not index low complexity kmers (ie. with a Shannon entropy < 1.0)
+    #[arg(long, default_value_t = false)]
+    pub no_low_complexity: bool,
 }
 
 /// check that a file name corresponds to a non empty file:
