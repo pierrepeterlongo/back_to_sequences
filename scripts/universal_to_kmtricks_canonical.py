@@ -1,3 +1,11 @@
+# Author: Pierre Peterlongo
+# Last modified: 23/01/2024
+
+# a canonical kmer is the smallest value between a kmer and its reverse complement
+# the order is usually defined as A < C < G < T. 
+# In kmtricks, the order is A < C < T < G.
+# This script computes the canonical kmer in kmtricks order.
+
 import sys
 
 rev = str.maketrans("ACGTacgt", "TGCAtgca")
