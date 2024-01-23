@@ -73,13 +73,13 @@ pub fn back_to_sequences(
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
     if !out_txt_kmers.is_empty() {
         (|| -> std::io::Result<_> {
-            // prints all kmers from kmer_set that have a count > 0
+            // prints all kmers from kmer_set, whaterver their counts count
             let mut output = std::fs::File::create(&out_txt_kmers)?;
             for (kmer, count) in kmer_set.iter() {
-                if count.get() > 0 {
-                    output.write_all(kmer)?;
-                    writeln!(output, " {}", count.get())?;
-                }
+                // if count.get() > 0 {
+                output.write_all(kmer)?;
+                writeln!(output, " {}", count.get())?;
+                // }
             }
             Ok(())
         })()

@@ -26,4 +26,5 @@
     * optimize the way kmers containing non ACGT letters are skipped
 * 0.2.12. 23/01/2024:
     * possiblity to not output filtered reads. In this case only counted kmers are output. 
-    
+* 0.2.13. 23/01/2024:
+    * prints all kmers from kmer_set, whaterver their counts count
