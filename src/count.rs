@@ -107,7 +107,7 @@ pub fn kmers_in_fasta_file_par(
         let mut buffer = HashMap::<usize, Vec<_>>::new();
 
         for id in 0.. {
-            let records = match buffer.remove(&id) {
+            let records: Vec<(fxread::Record, Option<usize>)> = match buffer.remove(&id) {
                 Some(vec) => vec,
                 None => loop {
                     match output_rx.recv() {
@@ -159,6 +159,79 @@ pub fn kmers_in_fasta_file_par(
         .join()
         .unwrap()
         .map_err(|e| eprintln!("Error writing the sequences: {}", e))
+}
+
+
+
+/// for each sequence of a given fasta file, count the number of indexed kmers it contains
+pub fn only_kmers_in_fasta_file_par(
+    file_name: String,
+    kmer_set: &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>,
+    kmer_size: usize,
+    stranded: bool,
+    query_reverse: bool,
+) {
+    const CHUNK_SIZE: usize = 32; // number of records
+    const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
+    const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
+
+    struct Chunk {
+        id: usize,
+        records: Vec<(fxread::Record, Option<usize>)>,
+    }
+
+    let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
+    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
+
+    
+
+    let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
+        let mut reader = if file_name.is_empty() {
+            initialize_stdin_reader(stdin().lock()).unwrap()
+        } else {
+            initialize_reader(&file_name).unwrap()
+        };
+
+        for id in 0.. {
+            let mut vec = Vec::with_capacity(CHUNK_SIZE);
+            for _ in 0..CHUNK_SIZE {
+                match reader.next_record()? {
+                    None => break,
+                    Some(record) => vec.push((record, None)),
+                }
+            }
+            if vec.is_empty() || input_tx.send(Chunk { id, records: vec }).is_err() {
+                return Ok(());
+            }
+        }
+        unreachable!()
+    });
+
+
+    let _ = input_rx
+        .into_iter()
+        .par_bridge()
+        .for_each(move |mut chunk| {
+            for (record, nb_shared_kmers) in &mut chunk.records {
+                record.upper();
+                if query_reverse {
+                    record.rev_comp(); // reverse the sequence in place
+                }
+                *nb_shared_kmers = Some(shared_kmers_par(
+                    kmer_set,
+                    record.seq(),
+                    kmer_size,
+                    stranded,
+                ));
+            }
+            // output_tx.send(chunk)
+        });
+        
+
+    reader_thread
+        .join()
+        .unwrap()
+        .map_err(|e| eprintln!("Error reading the sequences: {}", e));
 }
 
 /// count the number of indexed kmers in a given read

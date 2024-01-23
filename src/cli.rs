@@ -19,10 +19,12 @@ pub struct Args {
     #[arg(long)]
     pub in_kmers: String,
 
-    /// Output file containing the filtered original sequences (eg. reads).
+    /// Output file containing the filtered original sequences (eg. reads). 
     /// It will be automatically in fasta or fastq format depending on the input file.
-    #[arg(long)]
-    pub out_sequences: String,
+    /// If not provided, only the in_kmers with their count is output
+    #[arg(long, default_value_t = String::from(""))]
+    pub out_sequences: String, 
+
 
     /// If provided, output text file containing the kmers that occur in the reads with their number of occurrences
     #[arg(long, default_value_t = String::from(""))]

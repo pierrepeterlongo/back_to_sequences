@@ -44,21 +44,32 @@ pub fn back_to_sequences(
         kmer_hash::index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded, no_low_complexity)
             .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
 
-    count::kmers_in_fasta_file_par(
-        in_fasta_reads,
-        &kmer_set,
-        kmer_size,
-        out_fasta_reads.clone(),
-        min_threshold,
-        max_threshold,
-        stranded,
-        query_reverse,
-    )?;
-    println!(
-        "Filtered sequences with exact kmer count are in file {}",
-        out_fasta_reads
-    );
+    if out_fasta_reads.len() > 0 {
 
+        count::kmers_in_fasta_file_par(
+            in_fasta_reads,
+            &kmer_set,
+            kmer_size,
+            out_fasta_reads.clone(),
+            min_threshold,
+            max_threshold,
+            stranded,
+            query_reverse,
+        )?;
+        println!(
+            "Filtered sequences with exact kmer count are in file {}",
+            out_fasta_reads
+        );
+    } else {
+        println!("No output file provided, only the kmers with their count is output");
+        count::only_kmers_in_fasta_file_par(
+            in_fasta_reads,
+            &kmer_set,
+            kmer_size,
+            stranded,
+            query_reverse,
+        );
+    }
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
     if !out_txt_kmers.is_empty() {
         (|| -> std::io::Result<_> {

@@ -24,4 +24,6 @@
 * 0.2.11. 19/11/2023: 
     * add the `--no_low_complexity` option
     * optimize the way kmers containing non ACGT letters are skipped
+* 0.2.12. 23/01/2024:
+    * possiblity to not output filtered reads. In this case only counted kmers are output. 
     
