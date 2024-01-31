@@ -161,8 +161,6 @@ pub fn kmers_in_fasta_file_par(
         .map_err(|e| eprintln!("Error writing the sequences: {}", e))
 }
 
-
-
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 pub fn only_kmers_in_fasta_file_par(
     file_name: String,
@@ -182,8 +180,6 @@ pub fn only_kmers_in_fasta_file_par(
 
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
     let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
-
-    
 
     let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
         let mut reader = if file_name.is_empty() {
@@ -207,7 +203,6 @@ pub fn only_kmers_in_fasta_file_par(
         unreachable!()
     });
 
-
     let _ = input_rx
         .into_iter()
         .par_bridge()
@@ -226,7 +221,6 @@ pub fn only_kmers_in_fasta_file_par(
             }
             // output_tx.send(chunk)
         });
-        
 
     reader_thread
         .join()
@@ -259,4 +253,52 @@ pub fn shared_kmers_par(
         }
     }
     shared_kmers_count
+}
+
+#[cfg(test)]
+mod tests {
+    /* crate use */
+    use biotest::values::Generate as _;
+    use biotest::Format as _;
+
+    /* project use */
+    use super::*;
+
+    #[test]
+    fn shared_kmers() -> anyhow::Result<()> {
+        let mut rng = biotest::rand();
+        let generator = biotest::Fasta::builder().sequence_len(15).build()?;
+
+        let mut data = vec![];
+        generator.record(&mut data, &mut rng)?;
+        data.push(b'\n');
+
+        let sequence = &data[data.len() - 15..].to_vec();
+        generator.records(&mut data, &mut rng, 15)?;
+
+        let temp_dir = tempfile::tempdir()?;
+        let temp_path = temp_dir.path();
+        let kmers_in_path = temp_path.join("kmers_in.fasta");
+
+        std::fs::File::create(&kmers_in_path)?.write_all(&data)?;
+
+        let (kmer_set, _) = crate::kmer_hash::index_kmers::<atomic_counter::RelaxedCounter>(
+            kmers_in_path.into_os_string().into_string().unwrap(),
+            5,
+            false,
+            false,
+        )?;
+
+        assert_eq!(shared_kmers_par(&kmer_set, &sequence, 5, false), 10);
+
+        let random_sequence = biotest::values::Nucleotides::Dna.generate(&mut rng, 16)?;
+
+        assert_eq!(shared_kmers_par(&kmer_set, &random_sequence, 5, false), 4);
+
+        let small_sequence = biotest::values::Nucleotides::Dna.generate(&mut rng, 1)?;
+
+        assert_eq!(shared_kmers_par(&kmer_set, &small_sequence, 5, false), 0);
+
+        Ok(())
+    }
 }

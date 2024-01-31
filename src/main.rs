@@ -15,12 +15,9 @@ fn main() {
     (|| {
         let args = Args::parse();
 
-
         // If out_sequences and out_kmers are not provided, we do nothing, we can quit
         if args.out_sequences == "" && args.out_kmers == "" {
-            return Err(eprintln!(
-                "Warning: no output file provided, nothing to do"
-            ));
+            return Err(eprintln!("Warning: no output file provided, nothing to do"));
         }
 
         if !args.stranded && args.query_reverse {

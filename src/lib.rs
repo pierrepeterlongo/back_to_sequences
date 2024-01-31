@@ -15,9 +15,7 @@ pub mod count;
 pub mod kmer_hash;
 pub mod sequence_normalizer;
 
-
 /* project use */
-
 
 /// Extract sequences that contain some kmers and
 /// output the kmers that occur in the reads with their number of occurrences
@@ -40,12 +38,15 @@ pub fn back_to_sequences(
     cli::validate_non_empty_file(in_fasta_kmers.clone())?;
     // check that in_fasta_kmers is a non empty file:
 
-    let (kmer_set, kmer_size) =
-        kmer_hash::index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded, no_low_complexity)
-            .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
+    let (kmer_set, kmer_size) = kmer_hash::index_kmers::<RelaxedCounter>(
+        in_fasta_kmers,
+        kmer_size,
+        stranded,
+        no_low_complexity,
+    )
+    .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
 
     if out_fasta_reads.len() > 0 {
-
         count::kmers_in_fasta_file_par(
             in_fasta_reads,
             &kmer_set,
