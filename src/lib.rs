@@ -15,6 +15,8 @@ pub mod count;
 pub mod kmer_hash;
 pub mod sequence_normalizer;
 
+#[cfg(test)]
+pub mod tests;
 
 /* project use */
 

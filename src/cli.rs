@@ -19,12 +19,11 @@ pub struct Args {
     #[arg(long)]
     pub in_kmers: String,
 
-    /// Output file containing the filtered original sequences (eg. reads). 
+    /// Output file containing the filtered original sequences (eg. reads).
     /// It will be automatically in fasta or fastq format depending on the input file.
     /// If not provided, only the in_kmers with their count is output
     #[arg(long, default_value_t = String::from(""))]
-    pub out_sequences: String, 
-
+    pub out_sequences: String,
 
     /// If provided, output text file containing the kmers that occur in the reads with their number of occurrences
     #[arg(long, default_value_t = String::from(""))]
@@ -72,5 +71,38 @@ pub fn validate_non_empty_file(in_file: String) -> Result<(), ()> {
             in_file
         ));
     }
+
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ops::Deref;
+
+    #[test]
+    fn non_empty_file_test() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let directory = temp_dir.into_path();
+        let file = directory.join("empty.fasta");
+
+        // test directory
+        assert!(
+            validate_non_empty_file(directory.clone().into_os_string().into_string().unwrap())
+                .is_err()
+        );
+
+        // test not exist
+        assert!(
+            validate_non_empty_file(file.clone().into_os_string().into_string().unwrap()).is_err()
+        );
+
+        // test work
+        std::fs::File::create(&file)?;
+        assert!(
+            validate_non_empty_file(file.clone().into_os_string().into_string().unwrap()).is_ok()
+        );
+
+        Ok(())
+    }
 }

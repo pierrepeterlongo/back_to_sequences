@@ -19,7 +19,7 @@ license-file = "LICENSE"
 anyhow         = { version = "1" }
 
 # CLI parsing
-clap           = { version = "4", features = ["derive","cargo"] }
+clap           = { version = "4", features = ["derive", "cargo"] }
 
 # File parsing
 fxread         = { version = "0.2" }
@@ -30,8 +30,12 @@ atomic-counter = { version = "1" }
 rayon          = { version = "1" }
 ctor           = { version = "0.2" }
 ahash          = { version = "0.8.6" }
-entropy		   = { version = "0.4"}
+entropy	       = { version = "0.4"}
 
+
+[dev-dependencies]
+rand          = { version = "0.8" }
+tempfile      = { version = "3" }
 
 [profile.release]
 lto = 'thin'
