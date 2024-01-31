@@ -161,8 +161,6 @@ pub fn kmers_in_fasta_file_par(
         .map_err(|e| eprintln!("Error writing the sequences: {}", e))
 }
 
-
-
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 pub fn only_kmers_in_fasta_file_par(
     file_name: String,
@@ -182,8 +180,6 @@ pub fn only_kmers_in_fasta_file_par(
 
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
     let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
-
-    
 
     let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
         let mut reader = if file_name.is_empty() {
@@ -207,7 +203,6 @@ pub fn only_kmers_in_fasta_file_par(
         unreachable!()
     });
 
-
     let _ = input_rx
         .into_iter()
         .par_bridge()
@@ -226,7 +221,6 @@ pub fn only_kmers_in_fasta_file_par(
             }
             // output_tx.send(chunk)
         });
-        
 
     reader_thread
         .join()
@@ -259,4 +253,45 @@ pub fn shared_kmers_par(
         }
     }
     shared_kmers_count
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shared_kmers() -> anyhow::Result<()> {
+        let mut rng = crate::tests::rand();
+
+        let temp_dir = tempfile::tempdir()?;
+        let temp_path = temp_dir.path();
+
+        let kmers_in_path = temp_path.join("kmers_in.fasta");
+
+        let sequence = crate::tests::sequence(&mut rng, 16);
+        let mut data = crate::tests::fasta::records(&mut rng, 5, 16, 5);
+        data.extend(b">read_test\n");
+        data.extend(sequence.clone());
+
+        crate::tests::io::write_buffer(&data, &kmers_in_path)?;
+
+        let (kmer_set, _) = crate::kmer_hash::index_kmers::<atomic_counter::RelaxedCounter>(
+            kmers_in_path.into_os_string().into_string().unwrap(),
+            5,
+            false,
+            false,
+        )?;
+
+        assert_eq!(shared_kmers_par(&kmer_set, &sequence, 5, false), 11);
+
+        let random_sequence = crate::tests::sequence(&mut rng, 16);
+
+        assert_eq!(shared_kmers_par(&kmer_set, &random_sequence, 5, false), 1);
+
+        let small_sequence = crate::tests::sequence(&mut rng, 4);
+
+        assert_eq!(shared_kmers_par(&kmer_set, &small_sequence, 5, false), 0);
+
+        Ok(())
+    }
 }
