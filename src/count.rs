@@ -33,7 +33,7 @@ pub fn kmers_in_fasta_file_par(
     stranded: bool,
     query_reverse: bool,
 ) -> Result<(), ()> {
-    const CHUNK_SIZE: usize = 32; // number of records
+    const CHUNK_SIZE: usize = 32; // number of records  
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
@@ -181,7 +181,7 @@ pub fn only_kmers_in_fasta_file_par(
     }
 
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
-    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
+    let (_output_tx, _output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
 
     
 
@@ -228,10 +228,10 @@ pub fn only_kmers_in_fasta_file_par(
         });
         
 
-    reader_thread
-        .join()
-        .unwrap()
-        .map_err(|e| eprintln!("Error reading the sequences: {}", e));
+        let _ = reader_thread
+                .join()
+                .unwrap()
+                .map_err(|e| eprintln!("Error reading the sequences: {}", e));
 }
 
 /// count the number of indexed kmers in a given read

@@ -70,20 +70,43 @@ We queried: from 10,000 reads to 200 million reads (+ 1 billion on the cluster),
 ```	
 Extract sequences that contain some kmers
 
-Usage: back_to_sequences [OPTIONS] --in-sequences <IN_SEQUENCES> --in-kmers <IN_KMERS> --out-sequences <OUT_SEQUENCES>
+Usage: back_to_sequences [OPTIONS] --in-kmers <IN_KMERS> [--in-sequences <IN_SEQUENCES>]
 
 Options:
-      --in-sequences <IN_SEQUENCES>    Input fasta or fastq [.gz] file containing the original sequences (eg. reads). THe stdin is used if not provided [default: ]
-      --in-kmers <IN_KMERS>            Input fasta file containing the original kmers
-      --out-sequences <OUT_SEQUENCES>  Output file containing the filtered original sequences (eg. reads). It will be automatically in fasta or fastq format depending on the input file
-      --out-kmers <OUT_KMERS>          If provided, output text file containing the kmers that occur in the reads with their number of occurrences [default: ]
-  -k, --kmer-size <KMER_SIZE>          Size of the kmers to index and search [default: 31]
-  -m, --min-threshold <MIN_THRESHOLD>  Minimal threshold of the ratio  (%) of kmers that must be found in a sequence to keep it (default 0%). Thus by default, if no kmer is found in a sequence, it is not output [default: 0]
-      --max-threshold <MAX_THRESHOLD>  Maximal threshold of the ratio (%) of kmers that must be found in a sequence to keep it (default 100%). Thus by default, there is no limitation on the maximal number of kmers found in a sequence [default: 100]
-      --stranded                       Used original kmer strand (else canonical kmers are considered)
-      --query-reverse                  Query the reverse complement of reads. Useless without the --stranded option
-  -h, --help                           Print help
-  -V, --version                        Print version
+      --in-sequences <IN_SEQUENCES>
+          Input fasta or fastq [.gz] file containing the original sequences (eg. reads). 
+          The stdin is used if not provided [default: ]
+      --in-kmers <IN_KMERS>
+          Input fasta file containing the original kmers
+      --out-sequences <OUT_SEQUENCES>
+          Output file containing the filtered original sequences (eg. reads). 
+          It will be automatically in fasta or fastq format depending on the input file.
+          If not provided, only the in_kmers with their count is output [default: ]
+      --out-kmers <OUT_KMERS>
+          If provided, output a text file containing the kmers that occur in the reads with their number of occurrences [default: ]
+      --counted-kmer-threshold <COUNTED_KMER_THRESHOLD>
+          If out_kmers is provided, output only reference kmers whose number of occurrences is at least equal to this value\n
+          If out_kmers is not provided, this option is ignored [default: 0]
+  -k, --kmer-size <KMER_SIZE>
+          Size of the kmers to index and search [default: 31]
+  -m, --min-threshold <MIN_THRESHOLD>
+          Output sequences are those whose ratio of indexed kmers is in ]min_threshold; max_threshold]
+          Minimal threshold of the ratio  (%) of kmers that must be found in a sequence to keep it (default 0%).
+          Thus by default, if no kmer is found in a sequence, it is not output. [default: 0]
+      --max-threshold <MAX_THRESHOLD>
+          Output sequences are those whose ratio of indexed kmers is in ]min_threshold; max_threshold]
+          Maximal threshold of the ratio (%) of kmers that must be found in a sequence to keep it (default 100%).
+          Thus by default, there is no limitation on the maximal number of kmers found in a sequence. [default: 100]
+      --stranded
+          Used original kmer strand (else canonical kmers are considered)
+      --query-reverse
+          Query the reverse complement of reads. Useless without the --stranded option
+      --no-low-complexity
+          Do not index low complexity kmers (ie. with a Shannon entropy < 1.0)
+  -h, --help
+          Print help
+  -V, --version
+          Print version
 ```
 
 ### Examples
@@ -149,3 +172,4 @@ python3 scripts/extract_random_sequences.py --input reads.fasta --min_size 31 --
 * [ ] Thinks about a way to adapt this to protein sequences
 * [X] Add an option to set the size of the bloom filter used by kmindex
 * [ ] Provide a way to index and query more than one set $K$ of kmers
+* [ ] Output the strand of matched kmers

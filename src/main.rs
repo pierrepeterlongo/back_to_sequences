@@ -39,6 +39,7 @@ fn main() {
             args.out_sequences,
             args.out_kmers,
             args.kmer_size,
+            args.counted_kmer_threshold,
             args.min_threshold,
             args.max_threshold,
             args.stranded,

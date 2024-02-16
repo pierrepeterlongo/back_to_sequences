@@ -28,3 +28,6 @@
     * possiblity to not output filtered reads. In this case only counted kmers are output. 
 * 0.2.13. 23/01/2024:
     * prints all kmers from kmer_set, whaterver their counts count
+* 0.3.0 16/02/2024
+    * Add the counted_kmer_threshold option
+    

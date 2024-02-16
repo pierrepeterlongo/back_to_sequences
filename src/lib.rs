@@ -27,6 +27,7 @@ pub fn back_to_sequences(
     out_fasta_reads: String,
     out_txt_kmers: String,
     kmer_size: usize,
+    counted_kmer_threshold: usize,
     min_threshold: f32,
     max_threshold: f32,
     stranded: bool,
@@ -76,10 +77,10 @@ pub fn back_to_sequences(
             // prints all kmers from kmer_set, whaterver their counts count
             let mut output = std::fs::File::create(&out_txt_kmers)?;
             for (kmer, count) in kmer_set.iter() {
-                // if count.get() > 0 {
-                output.write_all(kmer)?;
-                writeln!(output, " {}", count.get())?;
-                // }
+                if count.get() >= counted_kmer_threshold {
+                    output.write_all(kmer)?;
+                    writeln!(output, " {}", count.get())?;
+                }
             }
             Ok(())
         })()
