@@ -164,6 +164,7 @@ pub fn kmers_in_fasta_file_par(
 
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
+#[allow(dead_code)]
 pub fn only_kmers_in_fasta_file_par(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>,
