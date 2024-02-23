@@ -33,6 +33,19 @@ fn main() {
                 "Error: --min-threshold must be <= --max-threshold"
             ));
         }
+
+        if args.in_sequences != "" && args.in_filelist != ""{
+            return Err(eprintln!(
+                "Error: --in-sequences and --in-filelist are mutually exclusive"
+            ));
+        }
+
+        if args.out_sequences != "" && args.out_filelist != ""{
+            return Err(eprintln!(
+                "Error: --out-sequences and --out-filelist are mutually exclusive"
+            ));
+        }
+
         if args.in_sequences == "" && args.in_filelist != ""{
             back_to_multiple_sequences(
                 args.in_filelist,

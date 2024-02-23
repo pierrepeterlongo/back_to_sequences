@@ -12,13 +12,14 @@ use clap::Parser;
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Input fasta or fastq [.gz] file containing the original sequences (eg. reads). 
-    /// The stdin is used if not provided
+    ///     The stdin is used if not provided 
+    ///     (and if `--in_filelist` is not provided neither)
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub in_sequences: String,
 
     /// Input txt file containing in each line a path to a fasta or fastq [.gz] file 
     /// containing the original sequences (eg. reads). 
-    /// The stdin is used if not provided
+    ///     Incompatible with `--in_sequences`
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub in_filelist: String,
 
@@ -31,18 +32,23 @@ pub struct Args {
     /// If not provided, only the in_kmers with their count is output
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub out_sequences: String, 
-
+    
     /// Output txt file containing in each line a path to a fasta or fastq [.gz] file 
     /// that will contain the related output file from the input files list 
-    /// The stdin is used if not provided
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub out_filelist: String,
 
-    /// If provided, output a text file containing the kmers that occur in the reads with their number of occurrences
+
+    /// If provided, output a text file containing the kmers that occur in the reads 
+    /// with their number of occurrences
+    ///     Note: if `--in_filelist` is used the output counted kmers are 
+    ///     those occurring the last input file of that list
     #[arg(long, default_value_t = String::from(""))]
     pub out_kmers: String,
+
     
-    /// If out_kmers is provided, output only reference kmers whose number of occurrences is at least equal to this value\n
+    /// If out_kmers is provided, output only reference kmers whose number of occurrences 
+    /// is at least equal to this value.
     /// If out_kmers is not provided, this option is ignored
     #[arg(long, default_value_t = 0, verbatim_doc_comment)]
     pub counted_kmer_threshold: usize,
