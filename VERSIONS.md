@@ -30,4 +30,6 @@
     * prints all kmers from kmer_set, whaterver their counts count
 * 0.3.0 16/02/2024
     * Add the counted_kmer_threshold option
+* 0.4.0 23/02/2024
+    * Add the possibility to filter several input datasets
     

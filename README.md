@@ -68,24 +68,38 @@ We queried: from 10,000 reads to 200 million reads (+ 1 billion on the cluster),
 ## Usage
 ### Help
 ```	
-Extract sequences that contain some kmers
+Back to sequences: find the origin of kmers
 
-Usage: back_to_sequences [OPTIONS] --in-kmers <IN_KMERS> [--in-sequences <IN_SEQUENCES>]
+Usage: back_to_sequences [OPTIONS] --in-kmers <IN_KMERS>
 
 Options:
       --in-sequences <IN_SEQUENCES>
           Input fasta or fastq [.gz] file containing the original sequences (eg. reads). 
-          The stdin is used if not provided [default: ]
+              The stdin is used if not provided 
+              (and if `--in_filelist` is not provided neither) [default: ]
+      --in-filelist <IN_FILELIST>
+          Input txt file containing in each line a path to a fasta or fastq [.gz] file 
+          containing the original sequences (eg. reads). 
+              Note1: if this option is used, the `--out_filelist` option must be used.
+                     The number of lines in out_filelist must be the same as in_filelist
+              Note2: Incompatible with `--in_sequences` [default: ]
       --in-kmers <IN_KMERS>
           Input fasta file containing the original kmers
       --out-sequences <OUT_SEQUENCES>
           Output file containing the filtered original sequences (eg. reads). 
           It will be automatically in fasta or fastq format depending on the input file.
           If not provided, only the in_kmers with their count is output [default: ]
+      --out-filelist <OUT_FILELIST>
+          Output txt file containing in each line a path to a fasta or fastq [.gz] file 
+          that will contain the related output file from the input files list  [default: ]
       --out-kmers <OUT_KMERS>
-          If provided, output a text file containing the kmers that occur in the reads with their number of occurrences [default: ]
+          If provided, output a text file containing the kmers that occur in the reads 
+          with their number of occurrences
+              Note: if `--in_filelist` is used the output counted kmers are 
+              those occurring the last input file of that list [default: ]
       --counted-kmer-threshold <COUNTED_KMER_THRESHOLD>
-          If out_kmers is provided, output only reference kmers whose number of occurrences is at least equal to this value\n
+          If out_kmers is provided, output only reference kmers whose number of occurrences 
+          is at least equal to this value.
           If out_kmers is not provided, this option is ignored [default: 0]
   -k, --kmer-size <KMER_SIZE>
           Size of the kmers to index and search [default: 31]
@@ -148,6 +162,19 @@ back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --
 cat reads.fasta | back_to_sequences --in-kmers compacted_kmers.fasta --out-sequences filtered_reads.fasta 
 ```
 Do not provide the `--in-sequences` if your input data are read from stdin.
+
+#### Using several input read sets. 
+Say you have three input read files `1.fa`, `2.fa`, `3.fa` to which you wish to apply `back_to_sequences`. 
+
+1. create an input and an output files:
+```bash
+ls 1.fa 2.fa 3.fa > in.fof
+echo 1_out.fa 2_out.fa 3_out.fa > out.fof
+```
+2. run `back_to_sequences`
+```bash
+back_to_sequences --in-filelist in.fof --in-kmers compacted_kmers.fasta --out-filelist out.fof 
+```
 
 ## Generate random data for testing
 You may be interested by generating a specific data set.

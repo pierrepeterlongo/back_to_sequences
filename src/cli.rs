@@ -19,7 +19,9 @@ pub struct Args {
 
     /// Input txt file containing in each line a path to a fasta or fastq [.gz] file 
     /// containing the original sequences (eg. reads). 
-    ///     Incompatible with `--in_sequences`
+    ///     Note1: if this option is used, the `--out_filelist` option must be used.
+    ///            The number of lines in out_filelist must be the same as in_filelist
+    ///     Note2: Incompatible with `--in_sequences`
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub in_filelist: String,
 
@@ -43,7 +45,7 @@ pub struct Args {
     /// with their number of occurrences
     ///     Note: if `--in_filelist` is used the output counted kmers are 
     ///     those occurring the last input file of that list
-    #[arg(long, default_value_t = String::from(""))]
+    #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub out_kmers: String,
 
     

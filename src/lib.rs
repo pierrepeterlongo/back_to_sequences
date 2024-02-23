@@ -119,37 +119,39 @@ pub fn back_to_multiple_sequences(
     cli::validate_non_empty_file(in_fasta_kmers.clone())?;
     // check that in_fasta_kmers is a non empty file:
 
+
+    let input_files = read_file_lines(in_fasta_filenames.as_str())
+    .map_err(|e| eprintln!("Error reading file: {}", e)).unwrap();
+    let output_files = read_file_lines(out_fasta_filenames.as_str())
+    .map_err(|e| eprintln!("Error reading file: {}", e)).unwrap();
+
+    if input_files.len() != output_files.len(){
+        eprintln!("Error: the number of input files and output files must be the same");
+        return Err(());
+    }
+
     let (kmer_set, kmer_size) =
         kmer_hash::index_kmers::<RelaxedCounter>(in_fasta_kmers, kmer_size, stranded, no_low_complexity)
             .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
 
-    if out_fasta_filenames.len() > 0 {
 
-        let input_files = read_file_lines(in_fasta_filenames.as_str())
-        .map_err(|e| eprintln!("Error reading file: {}", e)).unwrap();
-        let output_files = read_file_lines(out_fasta_filenames.as_str())
-        .map_err(|e| eprintln!("Error reading file: {}", e)).unwrap();
-
-        for (in_f, out_f) in input_files.iter().zip(output_files.iter()){
-            count::kmers_in_fasta_file_par(
-                in_f.to_string(),
-                &kmer_set,
-                kmer_size,
-                out_f.clone().to_string(),
-                min_threshold,
-                max_threshold,
-                stranded,
-                query_reverse,
-            )?;
-            println!(
-                "Filtered sequences with exact kmer count are in files specified at {}",
-                out_fasta_filenames
-            );
-        }
-    } else {
-        eprintln!("No output file-list provided. This is needed when using the option --in-filelist. \n
-        Please use the option --out_filelist and provide for each file in the input list a file in the output list.");
+    for (in_f, out_f) in input_files.iter().zip(output_files.iter()){
+        count::kmers_in_fasta_file_par(
+            in_f.to_string(),
+            &kmer_set,
+            kmer_size,
+            out_f.clone().to_string(),
+            min_threshold,
+            max_threshold,
+            stranded,
+            query_reverse,
+        )?;
+        println!(
+            "Filtered sequences from {} with exact kmer count are in files specified at {}",
+            in_f, out_f
+        );
     }
+    
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
     if !out_txt_kmers.is_empty() {
         (|| -> std::io::Result<_> {

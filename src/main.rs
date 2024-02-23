@@ -46,7 +46,17 @@ fn main() {
             ));
         }
 
+        
+
         if args.in_sequences == "" && args.in_filelist != ""{
+            if args.out_filelist == ""{
+                return Err(eprintln!(
+                    "Error: --in-filelist requires --out-filelist"
+                ));
+            }
+
+            
+
             back_to_multiple_sequences(
                 args.in_filelist,
                 args.in_kmers,
