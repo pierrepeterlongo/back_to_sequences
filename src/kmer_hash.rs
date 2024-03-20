@@ -4,7 +4,6 @@
 
 /* crates use */
 use ahash::AHashMap as HashMap;
-use atomic_counter::AtomicCounter;
 use entropy::shannon_entropy;
 use fxread::initialize_reader;
 
@@ -31,6 +30,7 @@ pub fn index_kmers<T: Default>(
     stranded: bool,
     no_low_complexity: bool,
 ) -> anyhow::Result<(HashMap<Vec<u8>, T>, usize)> {
+// ) -> anyhow::Result<(Box<dyn HashMap<Vec<u8>, T>>, usize)> {
     let mut kmer_set = HashMap::new();
     let reverse_complement = if stranded { Some(false) } else { None };
 
@@ -65,7 +65,7 @@ pub fn index_kmers<T: Default>(
                     SequenceNormalizer::new(kmer, reverse_complement)
                         .iter()
                         .collect(),
-                    Default::default(), // RelaxedCounter::new(0)
+                    Default::default(), // RelaxedCounter::new(0) // TODO call default from kmer_counter (anthony)
                 );
             }
             i = i + 1;
@@ -144,6 +144,7 @@ mod tests {
         Ok(())
     }
 
+    // anthony : pq "failed to resolve: unresolved import"
     #[test]
     fn build_index_kmers_stranded() -> anyhow::Result<()> {
         let mut rng = crate::tests::rand();

@@ -22,14 +22,15 @@ pub struct SequenceNormalizer<'a> {
 
 impl<'a> SequenceNormalizer<'a> {
     /// - `raw` is the original sequence (ascii string)
-    /// - `reverse_complement` may be:
+    /// - `required_reverse_complement` may be:
     ///     - `Some(false)` to get the original sequence
     ///     - `Some(true)` to get the reverse complement
     ///     - `None` to get the canonical sequence
-    pub fn new(raw: &'a [u8], reverse_complement: Option<bool>) -> Self {
+    pub fn new(raw: &'a [u8], required_reverse_complement: Option<bool>) -> Self {
+
         Self {
             raw,
-            reverse_complement: reverse_complement.unwrap_or_else(|| {
+            reverse_complement: required_reverse_complement.unwrap_or_else(|| {
                 let forward = Self::iter_impl(raw, false);
                 let reverse = Self::iter_impl(raw, true);
                 reverse.cmp(forward).is_lt()
@@ -63,5 +64,10 @@ impl<'a> SequenceNormalizer<'a> {
         for (i, c) in self.iter().enumerate() {
             dest[i] = c;
         }
+    }
+
+    /// Get the is_raw flag
+    pub fn is_raw(&self) -> bool {
+        self.reverse_complement
     }
 }

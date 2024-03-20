@@ -55,6 +55,12 @@ pub struct Args {
     #[arg(long, default_value_t = 0, verbatim_doc_comment)]
     pub counted_kmer_threshold: usize,
 
+
+    /// If out_kmers is provided, either only count their number of occurrences (default)
+    /// or output their occurrence positions (read_id, position, strand)
+    #[arg(long, default_value_t = false, verbatim_doc_comment)]
+    pub output_kmer_positions: bool,
+
     /// Size of the kmers to index and search
     #[arg(short, long, default_value_t = 31)]
     pub kmer_size: usize,

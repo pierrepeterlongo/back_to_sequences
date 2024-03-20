@@ -2,6 +2,8 @@
 
 /* std use */
 
+// TODO : limit the number of threads with an option
+
 /* crates use */
 use clap::Parser as _;
 
@@ -22,6 +24,16 @@ fn main() {
             return Err(eprintln!(
                 "Warning: no output file provided, nothing to do"
             ));
+        }
+
+        // If out_kmers is not provided but output_kmer_positions is true, warn that it has no effect
+        if args.out_kmers == "" && args.output_kmer_positions {
+            eprintln!("Warning: --output_kmer_positions has no effect without --out-kmers");
+        }
+
+        // If out_kmers is not provided but counted_kmer_threshold is set, this has no effect
+        if args.out_kmers == "" && args.counted_kmer_threshold > 0 {
+            eprintln!("Warning: --counted-kmer-threshold has no effect without --out-kmers");
         }
 
         if !args.stranded && args.query_reverse {
@@ -46,16 +58,12 @@ fn main() {
             ));
         }
 
-        
-
         if args.in_sequences == "" && args.in_filelist != ""{
             if args.out_filelist == ""{
                 return Err(eprintln!(
                     "Error: --in-filelist requires --out-filelist"
                 ));
             }
-
-            
 
             back_to_multiple_sequences(
                 args.in_filelist,
@@ -69,6 +77,7 @@ fn main() {
                 args.stranded,
                 args.query_reverse,
                 args.no_low_complexity,
+                args.output_kmer_positions,
             )
         }
         else{
@@ -84,6 +93,7 @@ fn main() {
                 args.stranded,
                 args.query_reverse,
                 args.no_low_complexity,
+                args.output_kmer_positions,
             )
         }
     })()

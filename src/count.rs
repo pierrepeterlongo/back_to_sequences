@@ -4,16 +4,19 @@
 use std::fs::File;
 use std::io::{self};
 use std::io::{stdin, BufWriter, Write};
+// use std::sync::Mutex;
 
 /* crates use */
 use ahash::AHashMap as HashMap;
 use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
 
-use atomic_counter::AtomicCounter as _;
 
 /* project use */
 use crate::sequence_normalizer::SequenceNormalizer;
+use crate::kmer_counter::KmerCounter;
+
+// use integer_encoding::*;
 
 /// round a float to a given number of decimals
 fn round(x: f32, decimals: u32) -> f32 {
@@ -139,7 +142,7 @@ pub fn kmers_in_fasta_file_par(
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par(
+                *nb_shared_kmers = Some(shared_kmers_par( // TODO: how to send the read id?
                     kmer_set,
                     record.seq(),
                     kmer_size,
@@ -160,6 +163,8 @@ pub fn kmers_in_fasta_file_par(
         .unwrap()
         .map_err(|e| eprintln!("Error writing the sequences: {}", e))
 }
+
+
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 #[allow(dead_code)]
@@ -230,12 +235,14 @@ pub fn only_kmers_in_fasta_file_par(
 }
 
 /// count the number of indexed kmers in a given read
-pub fn shared_kmers_par(
-    kmer_set: &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>,
+pub fn shared_kmers_par<C>(
+    kmer_set: &HashMap<Vec<u8>, C>,
     read: &[u8],
     kmer_size: usize,
     stranded: bool,
-) -> usize {
+) -> usize 
+where C: KmerCounter
+    {
     let mut shared_kmers_count = 0;
     let reverse_complement = if stranded { Some(false) } else { None };
 
@@ -247,10 +254,15 @@ pub fn shared_kmers_par(
     }
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
-        SequenceNormalizer::new(kmer, reverse_complement).copy_to_slice(canonical_kmer);
+        let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
+        sequence_normalizer.copy_to_slice(canonical_kmer);
         if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
             shared_kmers_count += 1;
-            kmer_counter.inc();
+            // kmer_counter.inc();
+            // kmer_counter.add_match(0, i, reverse_complement.unwrap()); //TODO get the read id 
+            // TODO validate with anthony the is_raw() call (does the reverse_complement value correct?)
+
+            kmer_counter.add_match(0, i, sequence_normalizer.is_raw()); //TODO get the read id
         }
     }
     shared_kmers_count
