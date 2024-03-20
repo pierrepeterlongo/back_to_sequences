@@ -4,6 +4,7 @@
 
 // TODO : limit the number of threads with an option
 
+
 /* crates use */
 use clap::Parser as _;
 
@@ -11,6 +12,7 @@ use clap::Parser as _;
 use back_to_sequences::back_to_sequences;
 use back_to_sequences::back_to_multiple_sequences;
 use back_to_sequences::cli::Args;
+use back_to_sequences::kmer_counter::KmerCounterWithLog;
 
 ///////////////////////// MAIN /////////////////////////
 
@@ -52,6 +54,8 @@ fn main() {
             ));
         }
 
+        
+
         if args.out_sequences != "" && args.out_filelist != ""{
             return Err(eprintln!(
                 "Error: --out-sequences and --out-filelist are mutually exclusive"
@@ -65,7 +69,14 @@ fn main() {
                 ));
             }
 
-            back_to_multiple_sequences(
+            if args.output_kmer_positions{
+                return Err(eprintln!(
+                    "Error: --in-filelist and --output-kmer-positions are mutually exclusive (for now)"
+                ));
+            }
+            
+
+            back_to_multiple_sequences( 
                 args.in_filelist,
                 args.in_kmers,
                 args.out_filelist,
@@ -77,11 +88,10 @@ fn main() {
                 args.stranded,
                 args.query_reverse,
                 args.no_low_complexity,
-                args.output_kmer_positions,
             )
         }
         else{
-            back_to_sequences(
+            back_to_sequences::<KmerCounterWithLog>(
                 args.in_sequences,
                 args.in_kmers,
                 args.out_sequences,
@@ -93,7 +103,6 @@ fn main() {
                 args.stranded,
                 args.query_reverse,
                 args.no_low_complexity,
-                args.output_kmer_positions,
             )
         }
     })()

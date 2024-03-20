@@ -26,9 +26,9 @@ fn round(x: f32, decimals: u32) -> f32 {
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 /// and output the sequence if its ratio of indexed kmers is in ]min_threshold, max_threshold]
-pub fn kmers_in_fasta_file_par(
+pub fn kmers_in_fasta_file_par<T: KmerCounter>(
     file_name: String,
-    kmer_set: &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>,
+    kmer_set: &HashMap<Vec<u8>, T>,
     kmer_size: usize,
     out_fasta: String,
     min_threshold: f32,
@@ -42,7 +42,7 @@ pub fn kmers_in_fasta_file_par(
 
     struct Chunk {
         id: usize,
-        records: Vec<(fxread::Record, Option<usize>)>,
+        records: Vec<(usize, fxread::Record, Option<usize>)>,
     }
 
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
@@ -54,7 +54,7 @@ pub fn kmers_in_fasta_file_par(
         })?);
 
     let mut output_record =
-        move |(record, nb_shared_kmers): (fxread::Record, Option<usize>)| -> std::io::Result<()> {
+        move |(read_id, record, nb_shared_kmers): (usize, fxread::Record, Option<usize>)| -> std::io::Result<()> {
             // round percent_shared_kmers to 3 decimals and transform to percents
             let percent_shared_kmers = round(
                 (nb_shared_kmers.unwrap() as f32 / (record.seq().len() - kmer_size + 1) as f32)
@@ -88,14 +88,16 @@ pub fn kmers_in_fasta_file_par(
         } else {
             initialize_reader(&file_name).unwrap()
         };
-
+        
+        let mut read_id = 0;
         for id in 0.. {
             let mut vec = Vec::with_capacity(CHUNK_SIZE);
             for _ in 0..CHUNK_SIZE {
                 match reader.next_record()? {
                     None => break,
-                    Some(record) => vec.push((record, None)),
+                    Some(record) => vec.push((read_id, record, None)),
                 }
+                read_id += 1;
             }
             if vec.is_empty() || input_tx.send(Chunk { id, records: vec }).is_err() {
                 return Ok(());
@@ -110,7 +112,7 @@ pub fn kmers_in_fasta_file_par(
         let mut buffer = HashMap::<usize, Vec<_>>::new();
 
         for id in 0.. {
-            let records: Vec<(fxread::Record, Option<usize>)> = match buffer.remove(&id) {
+            let records: Vec<(usize, fxread::Record, Option<usize>)> = match buffer.remove(&id) {
                 Some(vec) => vec,
                 None => loop {
                     match output_rx.recv() {
@@ -137,14 +139,15 @@ pub fn kmers_in_fasta_file_par(
         .into_iter()
         .par_bridge()
         .try_for_each(move |mut chunk| {
-            for (record, nb_shared_kmers) in &mut chunk.records {
+            for (read_id, record, nb_shared_kmers) in &mut chunk.records {
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par( // TODO: how to send the read id?
+                *nb_shared_kmers = Some(shared_kmers_par( 
                     kmer_set,
                     record.seq(),
+                    *read_id,
                     kmer_size,
                     stranded,
                 ));
@@ -167,10 +170,9 @@ pub fn kmers_in_fasta_file_par(
 
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
-#[allow(dead_code)]
-pub fn only_kmers_in_fasta_file_par(
+pub fn only_kmers_in_fasta_file_par <T: KmerCounter>(
     file_name: String,
-    kmer_set: &HashMap<Vec<u8>, atomic_counter::RelaxedCounter>,
+    kmer_set: &HashMap<Vec<u8>, T>,
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
@@ -181,7 +183,7 @@ pub fn only_kmers_in_fasta_file_par(
 
     struct Chunk {
         id: usize,
-        records: Vec<(fxread::Record, Option<usize>)>,
+        records: Vec<(usize, fxread::Record, Option<usize>)>,
     }
 
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
@@ -193,14 +195,15 @@ pub fn only_kmers_in_fasta_file_par(
         } else {
             initialize_reader(&file_name).unwrap()
         };
-
+        let mut read_id=0;  
         for id in 0.. {
             let mut vec = Vec::with_capacity(CHUNK_SIZE);
             for _ in 0..CHUNK_SIZE {
                 match reader.next_record()? {
                     None => break,
-                    Some(record) => vec.push((record, None)),
+                    Some(record) => vec.push((read_id, record, None)),
                 }
+                read_id += 1;
             }
             if vec.is_empty() || input_tx.send(Chunk { id, records: vec }).is_err() {
                 return Ok(());
@@ -213,7 +216,7 @@ pub fn only_kmers_in_fasta_file_par(
         .into_iter()
         .par_bridge()
         .for_each(move |mut chunk| {
-            for (record, nb_shared_kmers) in &mut chunk.records {
+            for (read_id, record, nb_shared_kmers) in &mut chunk.records {
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
@@ -221,6 +224,7 @@ pub fn only_kmers_in_fasta_file_par(
                 *nb_shared_kmers = Some(shared_kmers_par(
                     kmer_set,
                     record.seq(),
+                    *read_id,
                     kmer_size,
                     stranded,
                 ));
@@ -238,6 +242,7 @@ pub fn only_kmers_in_fasta_file_par(
 pub fn shared_kmers_par<C>(
     kmer_set: &HashMap<Vec<u8>, C>,
     read: &[u8],
+    read_id: usize,
     kmer_size: usize,
     stranded: bool,
 ) -> usize 
@@ -260,9 +265,8 @@ where C: KmerCounter
             shared_kmers_count += 1;
             // kmer_counter.inc();
             // kmer_counter.add_match(0, i, reverse_complement.unwrap()); //TODO get the read id 
-            // TODO validate with anthony the is_raw() call (does the reverse_complement value correct?)
 
-            kmer_counter.add_match(0, i, sequence_normalizer.is_raw()); //TODO get the read id
+            kmer_counter.add_match(read_id, i, sequence_normalizer.is_raw()); //TODO get the read id
         }
     }
     shared_kmers_count
@@ -295,15 +299,15 @@ mod tests {
             false,
         )?;
 
-        assert_eq!(shared_kmers_par(&kmer_set, &sequence, 5, false), 11);
+        assert_eq!(shared_kmers_par(&kmer_set, &sequence, 42, 5, false), 11);
 
         let random_sequence = crate::tests::sequence(&mut rng, 16);
 
-        assert_eq!(shared_kmers_par(&kmer_set, &random_sequence, 5, false), 1);
+        assert_eq!(shared_kmers_par(&kmer_set, &random_sequence, 42, 5, false), 1);
 
         let small_sequence = crate::tests::sequence(&mut rng, 4);
 
-        assert_eq!(shared_kmers_par(&kmer_set, &small_sequence, 5, false), 0);
+        assert_eq!(shared_kmers_par(&kmer_set, &small_sequence, 42, 5, false), 0);
 
         Ok(())
     }

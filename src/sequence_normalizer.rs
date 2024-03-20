@@ -68,6 +68,6 @@ impl<'a> SequenceNormalizer<'a> {
 
     /// Get the is_raw flag
     pub fn is_raw(&self) -> bool {
-        self.reverse_complement
+        !self.reverse_complement
     }
 }

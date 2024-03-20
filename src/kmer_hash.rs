@@ -8,7 +8,7 @@ use entropy::shannon_entropy;
 use fxread::initialize_reader;
 
 /* project use */
-use crate::sequence_normalizer::SequenceNormalizer;
+use crate::{kmer_counter::KmerCounter, sequence_normalizer::SequenceNormalizer};
 
 /// given a kmer as a &[u8] return a tuple boolean, position
 /// if the kmer contains an non ACGT letter, return false and the position of the first non ACGT letter
@@ -24,7 +24,7 @@ pub fn first_non_acgt(kmer: &[u8]) -> (bool, usize) {
 
 /// index all kmers of size kmer_size in the fasta file
 /// returns a hashmap with the kmers as keys and their count as values, initialized to 0
-pub fn index_kmers<T: Default>(
+pub fn index_kmers<T: KmerCounter>(
     file_name: String,
     kmer_size: usize,
     stranded: bool,
@@ -137,7 +137,7 @@ mod tests {
             ]
         );
 
-        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 
@@ -183,7 +183,7 @@ mod tests {
             ]
         );
 
-        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 
@@ -232,7 +232,7 @@ mod tests {
             ]
         );
 
-        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 
@@ -283,7 +283,7 @@ mod tests {
             ]
         );
 
-        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 
