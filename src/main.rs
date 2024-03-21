@@ -91,7 +91,7 @@ fn main() {
             )
         }
         else{
-            back_to_sequences::<KmerCounterWithLog>(
+            back_to_sequences::<std::sync::Mutex<KmerCounterWithLog>>(
                 args.in_sequences,
                 args.in_kmers,
                 args.out_sequences,
