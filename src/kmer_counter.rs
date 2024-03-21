@@ -64,9 +64,9 @@ impl KmerCounter for Mutex<KmerCounterWithLog>
                 Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
                 _ => unreachable!(),
             };
-            let (position, stranded) = match cursor.read_varint::<usize>() {
-                Ok(v) if v < 0 => (-(v as i64), true),
-                Ok(v) if v >= 0 => ((v as i64), false),
+            let (position, stranded) = match cursor.read_varint::<i64>() {
+                Ok(v) if v < 0 => (-v, true),
+                Ok(v) if v >= 0 => (v, false),
                 _ => unreachable!(),
             };
             // Append the id_read, position, and stranded information to the result string. Change the format when debugged
