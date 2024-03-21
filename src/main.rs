@@ -91,19 +91,38 @@ fn main() {
             )
         }
         else{
-            back_to_sequences::<std::sync::Mutex<KmerCounterWithLog>>(
-                args.in_sequences,
-                args.in_kmers,
-                args.out_sequences,
-                args.out_kmers,
-                args.kmer_size,
-                args.counted_kmer_threshold,
-                args.min_threshold,
-                args.max_threshold,
-                args.stranded,
-                args.query_reverse,
-                args.no_low_complexity,
-            )
+            if args.output_kmer_positions{
+                // Use KmerCounterWithLog to log the match position of kmers in the reads
+                back_to_sequences::<std::sync::Mutex<KmerCounterWithLog>>(
+                    args.in_sequences,
+                    args.in_kmers,
+                    args.out_sequences,
+                    args.out_kmers,
+                    args.kmer_size,
+                    args.counted_kmer_threshold,
+                    args.min_threshold,
+                    args.max_threshold,
+                    args.stranded,
+                    args.query_reverse,
+                    args.no_low_complexity,
+                )
+            }
+            else {
+                // Use atomic_counter::RelaxedCounter to only count the number of kmers in the reads
+                back_to_sequences::<atomic_counter::RelaxedCounter>(
+                    args.in_sequences,
+                    args.in_kmers,
+                    args.out_sequences,
+                    args.out_kmers,
+                    args.kmer_size,
+                    args.counted_kmer_threshold,
+                    args.min_threshold,
+                    args.max_threshold,
+                    args.stranded,
+                    args.query_reverse,
+                    args.no_low_complexity,
+                )
+            }
         }
     })()
     .map_err(|()| std::process::exit(1))

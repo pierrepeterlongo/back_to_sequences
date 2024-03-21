@@ -32,4 +32,7 @@
     * Add the counted_kmer_threshold option
 * 0.4.0 23/02/2024
     * Add the possibility to filter several input datasets
+* 0.5.0 21/03/2024
+    * Added the --output-kmer-positions option
+    * code refactoring
     

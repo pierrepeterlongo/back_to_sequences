@@ -54,7 +54,7 @@ pub fn kmers_in_fasta_file_par<T: KmerCounter>(
         })?);
 
     let mut output_record =
-        move |(read_id, record, nb_shared_kmers): (usize, fxread::Record, Option<usize>)| -> std::io::Result<()> {
+        move |(_read_id, record, nb_shared_kmers): (usize, fxread::Record, Option<usize>)| -> std::io::Result<()> {
             // round percent_shared_kmers to 3 decimals and transform to percents
             let percent_shared_kmers = round(
                 (nb_shared_kmers.unwrap() as f32 / (record.seq().len() - kmer_size + 1) as f32)
@@ -205,7 +205,7 @@ pub fn only_kmers_in_fasta_file_par <T: KmerCounter>(
                 }
                 read_id += 1;
             }
-            if vec.is_empty() || input_tx.send(Chunk { id, records: vec }).is_err() {
+            if vec.is_empty() || input_tx.send(Chunk {id, records: vec }).is_err() {
                 return Ok(());
             }
         }

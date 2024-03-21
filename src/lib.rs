@@ -5,7 +5,7 @@
 /* std use */
 use std::io::Write as _;
 
-use ahash::AHashMap;
+
 /* crates use */
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 
@@ -83,13 +83,12 @@ pub fn  back_to_sequences<T: KmerCounter>(
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
     if !out_txt_kmers.is_empty() {
         (|| -> std::io::Result<_> {
-            // prints all kmers from kmer_set, whaterver their counts count
+            // prints all kmers from kmer_set
             let mut output = std::fs::File::create(&out_txt_kmers)?;
             for (kmer, count) in kmer_set.iter() {
                 if count.get_count() >= counted_kmer_threshold {
                     output.write_all(kmer)?;
-                    // writeln!(output, " {}", count.get())?;
-                    writeln!(output, " {}", count.to_string())?; // TODO : validate with anthony
+                    writeln!(output, " {}", count.to_string())?; 
                 }
             }
             Ok(())

@@ -101,6 +101,9 @@ Options:
           If out_kmers is provided, output only reference kmers whose number of occurrences 
           is at least equal to this value.
           If out_kmers is not provided, this option is ignored [default: 0]
+      --output-kmer-positions
+          If out_kmers is provided, either only count their number of occurrences (default)
+          or output their occurrence positions (read_id, position, strand)
   -k, --kmer-size <KMER_SIZE>
           Size of the kmers to index and search [default: 31]
   -m, --min-threshold <MIN_THRESHOLD>
