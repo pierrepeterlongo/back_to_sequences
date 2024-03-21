@@ -5,13 +5,21 @@ use atomic_counter::AtomicCounter as _;
 
 use std::sync::Mutex;
 
-/* project use */
-// use crate::kmer_counter::KmerCounter;
+
+/// Information needed to represent a match between a kmer and a read.
+pub struct KmerMatch { 
+    /// The id of the read.
+    pub id_read: usize,
+    /// The position of the match in the read.
+    pub position: usize,
+    /// Whether the match is forward.
+    pub forward: bool,
+}
 
 /// Trait representing a KmerCounter.
 pub trait KmerCounter: Default + Sync + Send{
     /// Adds a match to the counter.
-    fn add_match(&self, id_read: usize, position: usize, stranded: bool) -> ();
+    fn add_match(&self, m: KmerMatch) -> ();
 
     /// Returns a string representation of the counter. Anthony ? right way to do this ? 
     fn to_string(&self) -> String;
@@ -21,7 +29,7 @@ pub trait KmerCounter: Default + Sync + Send{
 }
 impl KmerCounter for atomic_counter::RelaxedCounter {
     /// Adds a match to the counter.
-    fn add_match(&self, _id_read: usize, _position: usize, _stranded: bool) -> () {
+    fn add_match(&self, _m: KmerMatch) -> () {
         self.inc();
     }
 
@@ -67,11 +75,11 @@ impl KmerCounterWithLog
 impl KmerCounter for Mutex<KmerCounterWithLog>
 {
     /// Adds a match to the counter, storing the id_read and position in the log.
-    fn add_match(&self, id_read: usize, position: usize, stranded: bool) -> () {
+    fn add_match(&self, m: KmerMatch) -> () {
         let mut counter = self.lock().unwrap();
         counter.count += 1;
-        counter.log.write_varint(id_read).unwrap();
-        counter.log.write_varint(if stranded {-(position as i64)} else {position as i64}).unwrap();
+        counter.log.write_varint(m.id_read).unwrap();
+        counter.log.write_varint(if m.forward {-(m.position as i64)} else {m.position as i64}).unwrap();
     }
 
    

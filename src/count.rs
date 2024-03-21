@@ -263,10 +263,7 @@ where C: KmerCounter
         sequence_normalizer.copy_to_slice(canonical_kmer);
         if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
             shared_kmers_count += 1;
-            // kmer_counter.inc();
-            // kmer_counter.add_match(0, i, reverse_complement.unwrap()); //TODO get the read id 
-
-            kmer_counter.add_match(read_id, i, sequence_normalizer.is_raw()); //TODO get the read id
+            kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: (sequence_normalizer.is_raw()) });
         }
     }
     shared_kmers_count
