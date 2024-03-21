@@ -43,6 +43,27 @@ pub struct KmerCounterWithLog {
     log: Vec<u8>,
 }
 
+impl KmerCounterWithLog
+{
+    fn iter_matches(&self) -> impl std::iter::Iterator<Item=(usize, usize, bool)> + '_
+    {
+        let mut cursor = std::io::Cursor::new(&self.log);
+        std::iter::from_fn(move || {
+            let id_read = match cursor.read_varint::<usize>() {
+                Ok(v) => v,
+                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return None,
+                _ => unreachable!(),
+            };
+            let (position, stranded) = match cursor.read_varint::<i64>() {
+                Ok(v) if v < 0 => (-v, true),
+                Ok(v) if v >= 0 => (v, false),
+                _ => unreachable!(),
+            };
+            Some((id_read, position as usize, stranded))
+        })
+    }
+}
+
 impl KmerCounter for Mutex<KmerCounterWithLog>
 {
     /// Adds a match to the counter, storing the id_read and position in the log.
@@ -56,19 +77,8 @@ impl KmerCounter for Mutex<KmerCounterWithLog>
    
     fn to_string(&self) -> String {
         let counter = self.lock().unwrap();
-        let mut cursor = std::io::Cursor::new(&counter.log);
         let mut result = String::new(); // Create an empty string to store the result
-        loop {
-            let id_read = match cursor.read_varint::<usize>() {
-                Ok(v) => v,
-                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
-                _ => unreachable!(),
-            };
-            let (position, stranded) = match cursor.read_varint::<i64>() {
-                Ok(v) if v < 0 => (-v, true),
-                Ok(v) if v >= 0 => (v, false),
-                _ => unreachable!(),
-            };
+        for (id_read, position, stranded) in counter.iter_matches() {
             // Append the id_read, position, and stranded information to the result string. Change the format when debugged
             result.push_str(&format!("id_read: {}, position: {}, stranded: {}\n", id_read, position, stranded));
         }
