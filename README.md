@@ -40,7 +40,7 @@ In this case 20 kmers are shared with the indexed kmers. This represents 6.13% o
 ```bash
 git clone https://github.com/pierrepeterlongo/back_to_sequences.git
 cd back_to_sequences
-cargo install --path . 
+RUSTFLAGS="-C target-cpu=native" cargo install --path .
 ```
 
 A test can be performed by running `cd tiny_test; sh tiny_test.sh; cd -`.
@@ -57,13 +57,13 @@ We queried: from 10,000 reads to 200 million reads (+ 1 billion on the cluster),
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
-| 10,000          | 0.6s  | 	0.5s | 0.13 GB |
-| 100,000         | 1.2s  | 	0.8s | 0.13 GB |
-| 1,000,000       | 2.9s  | 3.5s	 | 0.13 GB |
-| 10,000,000      | 9.0s  | 11.2s	 | 0.13 GB |
-| 100,000,000     | 46.6s | 57.4	 | 0.13 GB |
-| 200,000,000     | 1m24  | 1m47     | 0.13 GB |
-| 1 billion       | 7m11  | -     | 0.13 GB |
+| 10,000          | 0.6s  | 0.5s | 0.13 GB |
+| 100,000         | 1.2s  | 0.8s | 0.13 GB |
+| 1,000,000       | 2.9s  | 3.5s | 0.13 GB |
+| 10,000,000      | 9.0s  | 11.2s | 0.13 GB |
+| 100,000,000     | 46.6s | 57.4 | 0.13 GB |
+| 200,000,000     | 1m24  | 1m47 | 0.13 GB |
+| 1 billion       | 7m11  | -    | 0.13 GB |
 
 ## Usage
 ### Help
@@ -73,6 +73,13 @@ Back to sequences: find the origin of kmers
 Usage: back_to_sequences [OPTIONS] --in-kmers <IN_KMERS>
 
 Options:
+      --in-kmers <IN_KMERS>
+          Input fasta file containing the original kmers
+              Note: back_to_sequences considers the content as a set of kmers
+              This means that a kmer is considered only once, 
+              even if it occurs multiple times in the file.
+              If the stranded option is not used (default), a kmer 
+              and its reverse complement are considered as the same kmer.
       --in-sequences <IN_SEQUENCES>
           Input fasta or fastq [.gz] file containing the original sequences (eg. reads). 
               The stdin is used if not provided 
@@ -83,10 +90,8 @@ Options:
               Note1: if this option is used, the `--out_filelist` option must be used.
                      The number of lines in out_filelist must be the same as in_filelist
               Note2: Incompatible with `--in_sequences` [default: ]
-      --in-kmers <IN_KMERS>
-          Input fasta file containing the original kmers
       --out-sequences <OUT_SEQUENCES>
-          Output file containing the filtered original sequences (eg. reads). 
+          Output file containing the filtered original sequences (eg. reads).
           It will be automatically in fasta or fastq format depending on the input file.
           If not provided, only the in_kmers with their count is output [default: ]
       --out-filelist <OUT_FILELIST>
@@ -94,7 +99,10 @@ Options:
           that will contain the related output file from the input files list  [default: ]
       --out-kmers <OUT_KMERS>
           If provided, output a text file containing the kmers that occur in the reads 
-          with their number of occurrences
+          with their 
+           * number of occurrences 
+              or 
+           * their occurrence positions if the --output_kmer_positions option is used
               Note: if `--in_filelist` is used the output counted kmers are 
               those occurring the last input file of that list [default: ]
       --counted-kmer-threshold <COUNTED_KMER_THRESHOLD>

@@ -1,6 +1,6 @@
 [package]
 name = "back_to_sequences"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 
 authors = [

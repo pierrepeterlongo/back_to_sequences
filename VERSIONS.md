@@ -35,4 +35,6 @@
 * 0.5.0 21/03/2024
     * Added the --output-kmer-positions option
     * code refactoring
+* 0.5.1 25/03/2024
+    * Clarify the options
     
