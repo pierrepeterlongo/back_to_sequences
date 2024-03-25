@@ -115,7 +115,6 @@ pub fn validate_non_empty_file(in_file: String) -> Result<(), ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ops::Deref;
 
     #[test]
     fn non_empty_file_test() -> anyhow::Result<()> {

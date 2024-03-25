@@ -17,9 +17,9 @@ pub mod kmer_hash;
 pub mod sequence_normalizer;
 pub mod file_parsing;
 pub mod kmer_counter;
+pub mod matched_sequences;
 #[cfg(test)]
 mod tests;
-
 /* project use */
 use file_parsing::read_file_lines;
 

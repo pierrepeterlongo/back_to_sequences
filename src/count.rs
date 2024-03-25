@@ -19,6 +19,7 @@ use crate::kmer_counter::KmerCounter;
 // use integer_encoding::*;
 
 /// round a float to a given number of decimals
+/// TOREMOVE
 fn round(x: f32, decimals: u32) -> f32 {
     let y = 10i32.pow(decimals) as f32;
     (x * y).round() / y
