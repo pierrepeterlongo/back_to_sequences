@@ -1,3 +1,4 @@
+use std::fmt;
 
 /// round a float to a given number of decimals
 fn round(x: f32, decimals: u32) -> f32 {
@@ -5,17 +6,20 @@ fn round(x: f32, decimals: u32) -> f32 {
     (x * y).round() / y
 }
 
-
 /// a read matched by a kmer
-pub trait MatchedSequence {
+pub trait MatchedSequence
+    where
+    Self: Sized + std::fmt::Display,
+    {
+// pub trait MatchedSequence: Sized + std::fmt::Display {
     /// Initialize the MatchedSequence
     fn new(mapped_position_size: usize) -> Self;
 
     /// add a match to the read
     fn add_match(&mut self, position: usize, forward: bool) -> ();
 
-    /// prints the matched read
-    fn to_string(&self) -> String;
+    // /// prints the matched read
+    // fn to_string(&self) -> String;
 
     /// returns the percentage of the read that was matched
     fn percent_shared_kmers(&self) -> f32;
@@ -28,6 +32,12 @@ pub struct MachedCount {
     pub mapped_position_size: usize,
     /// number of matched kmers
     pub count: usize,
+}
+
+impl fmt::Display for MachedCount {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.count, self.percent_shared_kmers())
+    }
 }
 
 /// implement MatchedSequence for the very simple Matched count read
@@ -43,9 +53,9 @@ impl MatchedSequence for MachedCount {
         self.count += 1;
     }
 
-    fn to_string(&self) -> String{
-        format!(" {} {}", self.count, self.percent_shared_kmers())
-    }
+    // fn to_string(&self) -> String{
+    //     format!(" {} {}", self.count, self.percent_shared_kmers())
+    // }
 
     fn percent_shared_kmers(&self) -> f32{
         round(
@@ -74,7 +84,7 @@ pub struct MatchedSequencePositional {
 impl MatchedSequence for MatchedSequencePositional {
     fn new(mapped_position_size: usize) -> Self {
         MatchedSequencePositional {
-            mapped_position_size: mapped_position_size,
+    mapped_position_size: mapped_position_size,
             count: 0,
             matched_positions: Vec::new(),
         }
@@ -86,19 +96,19 @@ impl MatchedSequence for MatchedSequencePositional {
     }
 
 
-    fn to_string(&self) -> String{
-        let mut result = format!(" {} {}", self.count, self.percent_shared_kmers());
-        for (position, forward) in self.matched_positions.iter(){
-            if *forward == true {
-                result.push_str(&format!(" {}", position));
-            }
-            else {
-                result.push_str(&format!(" -{}", position));
-            }
-            // result.push_str(&format!(" ({},{})", position, forward));
-        }
-        result // Return the result string
-    }
+    // fn to_string(&self) -> String{
+    //     let mut result = format!(" {} {}", self.count, self.percent_shared_kmers());
+    //     for (position, forward) in self.matched_positions.iter(){
+    //         if *forward == true {
+    //             result.push_str(&format!(" {}", position));
+    //         }
+    //         else {
+    //             result.push_str(&format!(" -{}", position));
+    //         }
+    //         // result.push_str(&format!(" ({},{})", position, forward));
+    //     }
+    //     result // Return the result string
+    // }
 
     // TODO how to avoid to duplicate this code
     fn percent_shared_kmers(&self) -> f32{
@@ -107,8 +117,23 @@ impl MatchedSequence for MatchedSequencePositional {
             2,
         )
     }
-}   
+}
 
+
+impl fmt::Display for MatchedSequencePositional {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut result = format!(" {} {}", self.count, self.percent_shared_kmers());
+        for (position, forward) in self.matched_positions.iter(){
+            if *forward == true {
+                result.push_str(&format!(" {}", position));
+            }
+            else {
+                result.push_str(&format!(" -{}", position));
+            }
+        }
+        write!(f, "{}", result)
+    }
+}
 
 #[cfg(test)]
 mod tests {

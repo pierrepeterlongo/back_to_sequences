@@ -4,6 +4,8 @@
 use std::fs::File;
 use std::io::{self};
 use std::io::{stdin, BufWriter, Write};
+use std::ptr::null;
+use std::result;
 // use std::sync::Mutex;
 
 /* crates use */
@@ -12,6 +14,7 @@ use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
 
 
+use crate::matched_sequences::MatchedSequence;
 /* project use */
 use crate::sequence_normalizer::SequenceNormalizer;
 use crate::kmer_counter::KmerCounter;
@@ -27,7 +30,7 @@ fn round(x: f32, decimals: u32) -> f32 {
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 /// and output the sequence if its ratio of indexed kmers is in ]min_threshold, max_threshold]
-pub fn kmers_in_fasta_file_par<T: KmerCounter>(
+pub fn kmers_in_fasta_file_par<T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
     kmer_size: usize,
@@ -36,14 +39,15 @@ pub fn kmers_in_fasta_file_par<T: KmerCounter>(
     max_threshold: f32,
     stranded: bool,
     query_reverse: bool,
-) -> Result<(), ()> {
+) -> Result<(), ()> 
+where T: KmerCounter, D: MatchedSequence {
     const CHUNK_SIZE: usize = 32; // number of records  
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
     struct Chunk {
         id: usize,
-        records: Vec<(usize, fxread::Record, Option<usize>)>,
+        records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
     }
 
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
@@ -55,13 +59,14 @@ pub fn kmers_in_fasta_file_par<T: KmerCounter>(
         })?);
 
     let mut output_record =
-        move |(_read_id, record, nb_shared_kmers): (usize, fxread::Record, Option<usize>)| -> std::io::Result<()> {
+        move |(_read_id, record, matched_sequence): (usize, fxread::Record, D)| -> std::io::Result<()> {
             // round percent_shared_kmers to 3 decimals and transform to percents
-            let percent_shared_kmers = round(
-                (nb_shared_kmers.unwrap() as f32 / (record.seq().len() - kmer_size + 1) as f32)
-                    * 100.0,
-                2,
-            );
+            pub trait MatchedSequence: Sized {
+                // trait definition
+            }
+
+            let percent_shared_kmers = matched_sequence.percent_shared_kmers();
+            
             if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
                 // supports the user defined thresholds
 
@@ -71,9 +76,7 @@ pub fn kmers_in_fasta_file_par<T: KmerCounter>(
                 output_file.write_all(iter.next().unwrap())?; // write the original header of the record
                 writeln!(
                     output_file,
-                    " {} {}",
-                    nb_shared_kmers.unwrap(),
-                    percent_shared_kmers
+                    "{}", matched_sequence.to_string()
                 )?; // append metrics
                 for line in iter {
                     output_file.write_all(line)?;
@@ -228,7 +231,7 @@ pub fn only_kmers_in_fasta_file_par <T: KmerCounter>(
                     *read_id,
                     kmer_size,
                     stranded,
-                ));
+                ) as usize); // Convert the result to usize
             }
             // output_tx.send(chunk)
         });
@@ -240,34 +243,34 @@ pub fn only_kmers_in_fasta_file_par <T: KmerCounter>(
 }
 
 /// count the number of indexed kmers in a given read
-pub fn shared_kmers_par<C>(
+pub fn shared_kmers_par<C, D>(
     kmer_set: &HashMap<Vec<u8>, C>,
     read: &[u8],
     read_id: usize,
     kmer_size: usize,
     stranded: bool,
-) -> usize 
-where C: KmerCounter
+) -> D 
+where C: KmerCounter, D: MatchedSequence
     {
-    let mut shared_kmers_count = 0;
+    let mut result = D::new(read.len() - kmer_size + 1);
     let reverse_complement = if stranded { Some(false) } else { None };
 
     let mut buf = [0].repeat(kmer_size);
     let canonical_kmer = buf.as_mut_slice();
 
     if read.len() < kmer_size {
-        return 0;
+        return result;
     }
     for i in 0..(read.len() - kmer_size + 1) {
         let kmer = &read[i..(i + kmer_size)];
         let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
         sequence_normalizer.copy_to_slice(canonical_kmer);
         if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
-            shared_kmers_count += 1;
+            result.add_match(i, sequence_normalizer.is_raw());
             kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: (sequence_normalizer.is_raw()) });
         }
     }
-    shared_kmers_count
+    result
 }
 
 #[cfg(test)]

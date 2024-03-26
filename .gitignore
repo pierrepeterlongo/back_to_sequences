@@ -18,3 +18,16 @@ lcov.info
 # Ignore flamegraphe output
 flamegraph.svg
 perf.data*
+
+
+# Ignore all .lock files
+**/*.lock
+
+# Ignore all generated files in the benchmark directory
+benchs/*.txt
+benchs/*.fasta
+benchs/fof.*
+
+# This stuff
+**/*.DS_Store
+**/__pycache__
