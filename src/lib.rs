@@ -56,7 +56,7 @@ pub fn  back_to_sequences<T: KmerCounter>(
                     .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
        
     if out_fasta_reads.len() > 0 {
-        count::kmers_in_fasta_file_par(
+        count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>( //TODO modify type wrt option
             in_fasta_reads,
             &kmer_set,
             kmer_size,
@@ -147,7 +147,7 @@ pub fn back_to_multiple_sequences(
 
 
     for (in_f, out_f) in input_files.iter().zip(output_files.iter()){
-        count::kmers_in_fasta_file_par(
+        count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>( //TODO modify type wrt option
             in_f.to_string(),
             &kmer_set,
             kmer_size,

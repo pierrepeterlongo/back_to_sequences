@@ -14,7 +14,7 @@ use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
 
 
-use crate::matched_sequences::MatchedSequence;
+use crate::matched_sequences::{self, MatchedSequence};
 /* project use */
 use crate::sequence_normalizer::SequenceNormalizer;
 use crate::kmer_counter::KmerCounter;
@@ -40,7 +40,7 @@ pub fn kmers_in_fasta_file_par<T, D>(
     stranded: bool,
     query_reverse: bool,
 ) -> Result<(), ()> 
-where T: KmerCounter, D: MatchedSequence {
+where T: KmerCounter, D: MatchedSequence + Sized {
     const CHUNK_SIZE: usize = 32; // number of records  
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
@@ -225,7 +225,7 @@ pub fn only_kmers_in_fasta_file_par <T: KmerCounter>(
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par(
+                *nb_shared_kmers = Some(shared_kmers_par::<_, matched_sequences::MatchedCount>(
                     kmer_set,
                     record.seq(),
                     *read_id,
@@ -250,7 +250,7 @@ pub fn shared_kmers_par<C, D>(
     kmer_size: usize,
     stranded: bool,
 ) -> D 
-where C: KmerCounter, D: MatchedSequence
+where C: KmerCounter, D: MatchedSequence + Sized
     {
     let mut result = D::new(read.len() - kmer_size + 1);
     let reverse_complement = if stranded { Some(false) } else { None };
