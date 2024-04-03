@@ -37,4 +37,6 @@
     * code refactoring
 * 0.5.1 25/03/2024
     * Clarify the options
+* 0.6.1 03/04/2024
+    * Added option output-mapping-positions
     

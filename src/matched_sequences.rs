@@ -11,7 +11,6 @@ pub trait MatchedSequence
     where
     Self: Sized + std::fmt::Display,
     {
-// pub trait MatchedSequence: Sized + std::fmt::Display {
     /// Initialize the MatchedSequence
     fn new(mapped_position_size: usize) -> Self;
 

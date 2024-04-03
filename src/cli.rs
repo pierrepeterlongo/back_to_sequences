@@ -66,6 +66,11 @@ pub struct Args {
     #[arg(long, default_value_t = false, verbatim_doc_comment)]
     pub output_kmer_positions: bool,
 
+    /// If provided, output matching positions on sequences in the
+    /// out_sequence file(s) 
+    #[arg(long, default_value_t = false, verbatim_doc_comment)]
+    pub output_mapping_positions: bool,
+
     /// Size of the kmers to index and search
     #[arg(short, long, default_value_t = 31)]
     pub kmer_size: usize,

@@ -33,6 +33,7 @@ pub fn  back_to_sequences<T: KmerCounter>(
     in_fasta_kmers: String,
     out_fasta_reads: String,
     out_txt_kmers: String,
+    output_mapping_positions: bool,
     kmer_size: usize,
     counted_kmer_threshold: usize,
     min_threshold: f32,
@@ -55,8 +56,9 @@ pub fn  back_to_sequences<T: KmerCounter>(
                     no_low_complexity)
                     .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
        
-    if out_fasta_reads.len() > 0 {
-        count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>( //TODO modify type wrt option
+    if out_fasta_reads.len() > 0 { // if an output file is provided, we output the sequences that contain the kmers
+        if output_mapping_positions {  // if output_mapping_positions is true, we output the kmers with their count and mapping positions
+        count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>( 
             in_fasta_reads,
             &kmer_set,
             kmer_size,
@@ -67,12 +69,30 @@ pub fn  back_to_sequences<T: KmerCounter>(
             query_reverse,
         )?;
         println!(
-            "Filtered sequences with exact kmer count are in file {}",
+            "Filtered sequences with exact kmer count and mapping positions are in file {}",
             out_fasta_reads
         );
-    } else {
+        }
+        else { // if output_mapping_positions is false, we output the kmers with their count
+            count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
+                in_fasta_reads,
+                &kmer_set,
+                kmer_size,
+                out_fasta_reads.clone(),
+                min_threshold,
+                max_threshold,
+                stranded,
+                query_reverse,
+            )?;
+            println!(
+                "Filtered sequences with exact kmer count are in file {}",
+                out_fasta_reads
+            );
+        }
+
+    } else { // if no output file is provided, only the kmers with their count is output
         println!("No output file provided, only the kmers with their count is output");
-        count::only_kmers_in_fasta_file_par(
+        count::only_kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
             in_fasta_reads,
             &kmer_set,
             kmer_size,
@@ -112,6 +132,7 @@ pub fn back_to_multiple_sequences(
     in_fasta_kmers: String,
     out_fasta_filenames: String,
     out_txt_kmers: String,
+    output_mapping_positions: bool,
     kmer_size: usize,
     counted_kmer_threshold: usize,
     min_threshold: f32,
@@ -145,7 +166,7 @@ pub fn back_to_multiple_sequences(
             no_low_complexity)
             .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
 
-
+    if output_mapping_positions { // if output_mapping_positions is true, we output the kmers with their count and mapping positions
     for (in_f, out_f) in input_files.iter().zip(output_files.iter()){
         count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>( //TODO modify type wrt option
             in_f.to_string(),
@@ -158,9 +179,28 @@ pub fn back_to_multiple_sequences(
             query_reverse,
         )?;
         println!(
-            "Filtered sequences from {} with exact kmer count are in files specified at {}",
+            "Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}",
             in_f, out_f
         );
+    }
+    } else { // if output_mapping_positions is false, we output the kmers with their count
+        for (in_f, out_f) in input_files.iter().zip(output_files.iter()){
+            count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
+                in_f.to_string(),
+                &kmer_set,
+                kmer_size,
+                out_f.clone().to_string(),
+                min_threshold,
+                max_threshold,
+                stranded,
+                query_reverse,
+            )?;
+            println!(
+                "Filtered sequences from {} with exact kmer count are in files specified at {}",
+                in_f, out_f
+            );
+        }
+        
     }
     
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file

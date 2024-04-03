@@ -112,6 +112,9 @@ Options:
       --output-kmer-positions
           If out_kmers is provided, either only count their number of occurrences (default)
           or output their occurrence positions (read_id, position, strand)
+      --output-mapping-positions
+          If provided, output matching positions on sequences in the
+          out_sequence file(s) 
   -k, --kmer-size <KMER_SIZE>
           Size of the kmers to index and search [default: 31]
   -m, --min-threshold <MIN_THRESHOLD>

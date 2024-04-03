@@ -40,18 +40,19 @@ pub fn kmers_in_fasta_file_par<T, D>(
     stranded: bool,
     query_reverse: bool,
 ) -> Result<(), ()> 
-where T: KmerCounter, D: MatchedSequence + Sized {
+where T: KmerCounter, D: MatchedSequence + Send + 'static {
     const CHUNK_SIZE: usize = 32; // number of records  
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
-    struct Chunk {
+    struct Chunk<D> {
         id: usize,
-        records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
+        records: Vec<(usize, fxread::Record, Option<D>)>,
+        // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
     }
 
-    let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
-    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
+    let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(INPUT_CHANNEL_SIZE);
+    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(OUTPUT_CHANNEL_SIZE);
 
     let mut output_file =
         BufWriter::new(File::create(out_fasta).map_err(|e| {
@@ -59,13 +60,13 @@ where T: KmerCounter, D: MatchedSequence + Sized {
         })?);
 
     let mut output_record =
-        move |(_read_id, record, matched_sequence): (usize, fxread::Record, D)| -> std::io::Result<()> {
+        move |(_read_id, record, matched_sequence): (usize, fxread::Record, Option<D>)| -> std::io::Result<()> {
             // round percent_shared_kmers to 3 decimals and transform to percents
             pub trait MatchedSequence: Sized {
                 // trait definition
             }
 
-            let percent_shared_kmers = matched_sequence.percent_shared_kmers();
+            let percent_shared_kmers = matched_sequence.as_ref().unwrap().percent_shared_kmers();
             
             if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
                 // supports the user defined thresholds
@@ -76,7 +77,7 @@ where T: KmerCounter, D: MatchedSequence + Sized {
                 output_file.write_all(iter.next().unwrap())?; // write the original header of the record
                 writeln!(
                     output_file,
-                    "{}", matched_sequence.to_string()
+                    "{}", matched_sequence.as_ref().unwrap()
                 )?; // append metrics
                 for line in iter {
                     output_file.write_all(line)?;
@@ -116,7 +117,7 @@ where T: KmerCounter, D: MatchedSequence + Sized {
         let mut buffer = HashMap::<usize, Vec<_>>::new();
 
         for id in 0.. {
-            let records: Vec<(usize, fxread::Record, Option<usize>)> = match buffer.remove(&id) {
+            let records: Vec<(usize, fxread::Record, Option<D>)> = match buffer.remove(&id) {
                 Some(vec) => vec,
                 None => loop {
                     match output_rx.recv() {
@@ -148,7 +149,7 @@ where T: KmerCounter, D: MatchedSequence + Sized {
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par( 
+                *nb_shared_kmers = Some(shared_kmers_par::<_, D>( 
                     kmer_set,
                     record.seq(),
                     *read_id,
@@ -174,24 +175,26 @@ where T: KmerCounter, D: MatchedSequence + Sized {
 
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
-pub fn only_kmers_in_fasta_file_par <T: KmerCounter>(
+pub fn only_kmers_in_fasta_file_par <T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
-) {
+) 
+where T: KmerCounter, D: MatchedSequence + Send + 'static {
     const CHUNK_SIZE: usize = 32; // number of records
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
-    struct Chunk {
+    struct Chunk<D> {
         id: usize,
-        records: Vec<(usize, fxread::Record, Option<usize>)>,
+        records: Vec<(usize, fxread::Record, Option<D>)>,
+        // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
     }
 
-    let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
-    let (_output_tx, _output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
+    let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(INPUT_CHANNEL_SIZE);
+    let (_output_tx, _output_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(OUTPUT_CHANNEL_SIZE);
 
     let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
         let mut reader = if file_name.is_empty() {
@@ -225,13 +228,13 @@ pub fn only_kmers_in_fasta_file_par <T: KmerCounter>(
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par::<_, matched_sequences::MatchedCount>(
+                *nb_shared_kmers = Some(shared_kmers_par::<_, D>(
                     kmer_set,
                     record.seq(),
                     *read_id,
                     kmer_size,
                     stranded,
-                ) as usize); // Convert the result to usize
+                )); // Convert the result to usize
             }
             // output_tx.send(chunk)
         });
@@ -285,7 +288,7 @@ mod tests {
         let temp_path = temp_dir.path();
 
         let kmers_in_path = temp_path.join("kmers_in.fasta");
-
+        let kmer_size = 42;
         let sequence = crate::tests::sequence(&mut rng, 16);
         let mut data = crate::tests::fasta::records(&mut rng, 5, 16, 5);
         data.extend(b">read_test\n");
@@ -300,15 +303,15 @@ mod tests {
             false,
         )?;
 
-        assert_eq!(shared_kmers_par(&kmer_set, &sequence, 42, 5, false), 11);
+        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &sequence, 42, kmer_size, false).count, 11);
 
         let random_sequence = crate::tests::sequence(&mut rng, 16);
 
-        assert_eq!(shared_kmers_par(&kmer_set, &random_sequence, 42, 5, false), 1);
+        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &random_sequence, 42, kmer_size, false).count, 1);
 
         let small_sequence = crate::tests::sequence(&mut rng, 4);
 
-        assert_eq!(shared_kmers_par(&kmer_set, &small_sequence, 42, 5, false), 0);
+        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &small_sequence, 42, kmer_size, false).count, 0);
 
         Ok(())
     }
