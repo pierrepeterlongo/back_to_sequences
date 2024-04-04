@@ -11,6 +11,15 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
+    /// Input fasta file containing the original kmers
+    ///     Note: back_to_sequences considers the content as a set of kmers
+    ///     This means that a kmer is considered only once, 
+    ///     even if it occurs multiple times in the file.
+    ///     If the stranded option is not used (default), a kmer 
+    ///     and its reverse complement are considered as the same kmer.
+    #[arg(long, verbatim_doc_comment)]
+    pub in_kmers: String,
+
     /// Input fasta or fastq [.gz] file containing the original sequences (eg. reads). 
     ///     The stdin is used if not provided 
     ///     (and if `--in_filelist` is not provided neither)
@@ -25,10 +34,6 @@ pub struct Args {
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub in_filelist: String,
 
-    /// Input fasta file containing the original kmers
-    #[arg(long)]
-    pub in_kmers: String,
-
     /// Output file containing the filtered original sequences (eg. reads).
     /// It will be automatically in fasta or fastq format depending on the input file.
     /// If not provided, only the in_kmers with their count is output
@@ -40,20 +45,31 @@ pub struct Args {
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub out_filelist: String,
 
-
     /// If provided, output a text file containing the kmers that occur in the reads 
-    /// with their number of occurrences
+    /// with their 
+    ///  * number of occurrences 
+    ///     or 
+    ///  * their occurrence positions if the --output_kmer_positions option is used
     ///     Note: if `--in_filelist` is used the output counted kmers are 
     ///     those occurring the last input file of that list
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub out_kmers: String,
 
-    
     /// If out_kmers is provided, output only reference kmers whose number of occurrences 
     /// is at least equal to this value.
     /// If out_kmers is not provided, this option is ignored
     #[arg(long, default_value_t = 0, verbatim_doc_comment)]
     pub counted_kmer_threshold: usize,
+
+    /// If out_kmers is provided, either only count their number of occurrences (default)
+    /// or output their occurrence positions (read_id, position, strand)
+    #[arg(long, default_value_t = false, verbatim_doc_comment)]
+    pub output_kmer_positions: bool,
+
+    /// If provided, output matching positions on sequences in the
+    /// out_sequence file(s) 
+    #[arg(long, default_value_t = false, verbatim_doc_comment)]
+    pub output_mapping_positions: bool,
 
     /// Size of the kmers to index and search
     #[arg(short, long, default_value_t = 31)]
@@ -104,7 +120,6 @@ pub fn validate_non_empty_file(in_file: String) -> Result<(), ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ops::Deref;
 
     #[test]
     fn non_empty_file_test() -> anyhow::Result<()> {

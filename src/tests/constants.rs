@@ -22,5 +22,5 @@ pub const SEED: [u8; 32] = [42; 32];
 
 pub const NUCLEOTIDES: [u8; 8] = *b"ACTGactg";
 pub const PHRED33: [u8; 41] = gen_array::<41, 33>();
-pub const PHRED64: [u8; 40] = gen_array::<40, 64>();
+pub const _PHRED64: [u8; 40] = gen_array::<40, 64>();
 pub const ALPHABETS: [u8; 26] = gen_array::<26, 97>();
