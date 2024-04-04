@@ -39,4 +39,7 @@
     * Clarify the options
 * 0.6.1 03/04/2024
     * Added option output-mapping-positions
+* 0.6.2 04/04/2024
+    * Validate option output-mapping-positions
+    * Added tests for output-mapping-positions
     

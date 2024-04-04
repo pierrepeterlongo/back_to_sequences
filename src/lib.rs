@@ -67,6 +67,7 @@ pub fn  back_to_sequences<T: KmerCounter>(
             max_threshold,
             stranded,
             query_reverse,
+            true, // in this case we map both strands
         )?;
         println!(
             "Filtered sequences with exact kmer count and mapping positions are in file {}",
@@ -83,6 +84,7 @@ pub fn  back_to_sequences<T: KmerCounter>(
                 max_threshold,
                 stranded,
                 query_reverse,
+                false, // in this case we do not map both strands
             )?;
             println!(
                 "Filtered sequences with exact kmer count are in file {}",
@@ -177,6 +179,7 @@ pub fn back_to_multiple_sequences(
             max_threshold,
             stranded,
             query_reverse,
+            true, // in this case we map both strands
         )?;
         println!(
             "Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}",
@@ -194,6 +197,7 @@ pub fn back_to_multiple_sequences(
                 max_threshold,
                 stranded,
                 query_reverse,
+                false, // in this case we do not map both strands
             )?;
             println!(
                 "Filtered sequences from {} with exact kmer count are in files specified at {}",

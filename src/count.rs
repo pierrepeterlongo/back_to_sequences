@@ -17,6 +17,30 @@ use crate::matched_sequences::MatchedSequence;
 use crate::sequence_normalizer::SequenceNormalizer;
 use crate::kmer_counter::KmerCounter;
 
+// pub fn vect_u8_to_string(seq: Vec<u8>) -> String {
+//     let mut s = String::new();
+//     for c in seq {
+//         s.push(c as char);
+//     }
+//     s
+// }
+
+/// Reverse complement a sequence in place.
+pub fn rev_comp(seq: &mut [u8]) {
+    // Reverse the sequence
+    seq.reverse();
+
+    // Complement the sequence
+    seq.iter_mut().for_each(|c| {
+        if *c & 2 == 0 {
+            *c ^= 21;
+        } else {
+            *c ^= 4;
+        }
+    });
+}
+
+
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 /// and output the sequence if its ratio of indexed kmers is in ]min_threshold, max_threshold]
 pub fn kmers_in_fasta_file_par<T, D>(
@@ -28,6 +52,7 @@ pub fn kmers_in_fasta_file_par<T, D>(
     max_threshold: f32,
     stranded: bool,
     query_reverse: bool,
+    map_both_strands: bool,
 ) -> Result<(), ()> 
 where T: KmerCounter, D: MatchedSequence + Send + 'static {
     const CHUNK_SIZE: usize = 32; // number of records  
@@ -139,6 +164,7 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
                     *read_id,
                     kmer_size,
                     stranded,
+                    map_both_strands,
                 ));
             }
             output_tx.send(chunk)
@@ -218,9 +244,9 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
                     *read_id,
                     kmer_size,
                     stranded,
+                    false, // in this case we map only the kmer or its reverse complement not both
                 )); // Convert the result to usize
             }
-            // output_tx.send(chunk)
         });
 
         let _ = reader_thread
@@ -236,28 +262,56 @@ pub fn shared_kmers_par<C, D>(
     read_id: usize,
     kmer_size: usize,
     stranded: bool,
+    map_both_strands: bool,
 ) -> D 
 where C: KmerCounter, D: MatchedSequence + Sized
     {
+        
     let mut result = D::new(read.len() - kmer_size + 1);
-    let reverse_complement = if stranded { Some(false) } else { None };
-
-    let mut buf = [0].repeat(kmer_size);
-    let canonical_kmer = buf.as_mut_slice();
-
     if read.len() < kmer_size {
         return result;
     }
-    for i in 0..(read.len() - kmer_size + 1) {
-        let kmer = &read[i..(i + kmer_size)];
-        let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
-        sequence_normalizer.copy_to_slice(canonical_kmer);
-        if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
-            result.add_match(i, sequence_normalizer.is_raw());
-            kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: (sequence_normalizer.is_raw()) });
+    let reverse_complement = if stranded { Some(false) } else { None };
+    
+
+    let mut buf = [0].repeat(kmer_size);
+
+    if ! map_both_strands { // if we do not map both strands, we only map the kmer or its reverse complement
+        let canonical_kmer = buf.as_mut_slice();
+
+        for i in 0..(read.len() - kmer_size + 1) {
+            let kmer = &read[i..(i + kmer_size)];
+            let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
+            sequence_normalizer.copy_to_slice(canonical_kmer);
+            if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
+                result.add_match(i, sequence_normalizer.is_raw());
+                kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: (sequence_normalizer.is_raw()) });
+            }
         }
+        return result;
     }
-    result
+    else { // if we map both strands, we map the kmer and its reverse complement
+        // Note that if --stranded is not set, the mapping is always detected in forward strand
+        for i in 0..(read.len() - kmer_size + 1) {
+            let mut kmer = Vec::from(&read[i..(i + kmer_size)]);
+            // println!("kmer {:?} pos {:?}", vect_u8_to_string(kmer.clone()), i);
+            if let Some(kmer_counter) = kmer_set.get(&kmer) {
+                result.add_match(i, true);
+                kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: true });
+                // println!("added forward pos {:?}", i);
+            }
+            else { // forward did not match, we try the reverse one
+                rev_comp(&mut kmer);
+                // println!("rc kmer {:?} pos {:?}", vect_u8_to_string(kmer.clone()), i);
+                if let Some(kmer_counter) = kmer_set.get(&kmer) {
+                    result.add_match(i, false);
+                    kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: false });
+                    // println!("added revcomp pos {:?} {:?}", i, vect_u8_to_string(kmer));
+                }
+            }
+        }
+        return result;
+    }
 }
 
 #[cfg(test)]
@@ -265,6 +319,16 @@ mod tests {
     use crate::matched_sequences;
 
     use super::*;
+
+    #[test]
+    fn test_rev_comp() -> anyhow::Result<()> {
+        let mut seq = b"AAACC".to_vec();
+        rev_comp(&mut seq);
+        assert_eq!(seq, b"GGTTT".to_vec());
+        Ok(())
+    }
+
+
 
     #[test]
     fn shared_kmers() -> anyhow::Result<()> {
@@ -289,15 +353,15 @@ mod tests {
             false,
         )?;
 
-        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &sequence, 42, kmer_size, false).count, 11);
+        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &sequence, 42, kmer_size, false, false).count, 11);
 
         let random_sequence = crate::tests::sequence(&mut rng, 16);
 
-        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &random_sequence, 42, kmer_size, false).count, 1);
+        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &random_sequence, 42, kmer_size, false, false).count, 1);
 
         let small_sequence = crate::tests::sequence(&mut rng, 4);
 
-        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &small_sequence, 42, kmer_size, false).count, 0);
+        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &small_sequence, 42, kmer_size, false, false).count, 0);
 
         Ok(())
     }

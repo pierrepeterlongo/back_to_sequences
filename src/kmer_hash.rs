@@ -144,7 +144,7 @@ mod tests {
         Ok(())
     }
 
-    // anthony : pq "failed to resolve: unresolved import"
+
     #[test]
     fn build_index_kmers_stranded() -> anyhow::Result<()> {
         let mut rng = crate::tests::rand();
