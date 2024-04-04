@@ -31,3 +31,8 @@ benchs/fof.*
 # This stuff
 **/*.DS_Store
 **/__pycache__
+
+# misc.
+Cargo.lock
+log_benchs_synthetic.txt 
+settings.json

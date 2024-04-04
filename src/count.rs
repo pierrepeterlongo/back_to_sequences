@@ -4,8 +4,6 @@
 use std::fs::File;
 use std::io::{self};
 use std::io::{stdin, BufWriter, Write};
-use std::ptr::null;
-use std::result;
 // use std::sync::Mutex;
 
 /* crates use */
@@ -14,19 +12,10 @@ use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
 
 
-use crate::matched_sequences::{self, MatchedSequence};
+use crate::matched_sequences::MatchedSequence;
 /* project use */
 use crate::sequence_normalizer::SequenceNormalizer;
 use crate::kmer_counter::KmerCounter;
-
-// use integer_encoding::*;
-
-/// round a float to a given number of decimals
-/// TOREMOVE
-fn round(x: f32, decimals: u32) -> f32 {
-    let y = 10i32.pow(decimals) as f32;
-    (x * y).round() / y
-}
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 /// and output the sequence if its ratio of indexed kmers is in ]min_threshold, max_threshold]
@@ -61,11 +50,6 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
 
     let mut output_record =
         move |(_read_id, record, matched_sequence): (usize, fxread::Record, Option<D>)| -> std::io::Result<()> {
-            // round percent_shared_kmers to 3 decimals and transform to percents
-            pub trait MatchedSequence: Sized {
-                // trait definition
-            }
-
             let percent_shared_kmers = matched_sequence.as_ref().unwrap().percent_shared_kmers();
             
             if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
@@ -278,6 +262,8 @@ where C: KmerCounter, D: MatchedSequence + Sized
 
 #[cfg(test)]
 mod tests {
+    use crate::matched_sequences;
+
     use super::*;
 
     #[test]

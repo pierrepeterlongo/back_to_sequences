@@ -1,3 +1,5 @@
+//! matched_sequences declarations
+
 use std::fmt;
 
 /// round a float to a given number of decimals
@@ -35,7 +37,7 @@ pub struct MachedCount {
 
 impl fmt::Display for MachedCount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.count, self.percent_shared_kmers())
+        write!(f, " {} {}", self.count, self.percent_shared_kmers())
     }
 }
 
