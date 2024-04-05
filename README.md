@@ -1,19 +1,17 @@
-<!-- vscode-markdown-toc -->
+# Back to sequences
+
+[![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
+
+
+<img src="k2s.jpg" alt="Old library - IA generated" width="150" height="150">
+
+<!-- Add a table of content -->
 * [Description](#Description)
 * [Citation](#Citation)
 * [Install](#Install)
 * [Quick benchmark (obtained with version v0.6.4)](#Quickbenchmarkobtainedwithversionv0.6.4)
 * [Usage](#Usage)
 * [Generate random data for testing](#Generaterandomdatafortesting)
-
-<!-- vscode-markdown-toc-config
-	numbering=true
-	autoSave=true
-	/vscode-markdown-toc-config -->
-<!-- /vscode-markdown-toc --># Back to sequences
-
-[![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
-
 
 <!-- ![Old library - IA generated](k2s.jpg) -->
 ##  1. <a name='Description'></a>Description
