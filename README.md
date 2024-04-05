@@ -1,13 +1,22 @@
-# Back to sequences
+<!-- vscode-markdown-toc -->
+* [Description](#Description)
+* [Citation](#Citation)
+* [Install](#Install)
+* [Quick benchmark (obtained with version v0.6.4)](#Quickbenchmarkobtainedwithversionv0.6.4)
+* [Usage](#Usage)
+* [Generate random data for testing](#Generaterandomdatafortesting)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc --># Back to sequences
 
 [![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
 
 
-<img src="k2s.jpg" alt="Old library - IA generated" width="150" height="150">
-
-
 <!-- ![Old library - IA generated](k2s.jpg) -->
-## Description
+##  1. <a name='Description'></a>Description
 
 Given a set $K$ of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing some of those kmers.
 
@@ -18,7 +27,7 @@ TGGATAAAAAGGCTGACGAAAGGTCTAGCTAAAATTGTCAGGTGCTCTCAGATAAAGCAGTAAGCGAGTTGGTGTTCGCT
 ```
 In this case 20 kmers are shared with the indexed kmers. This represents 6.13% of the kmers in the sequence.
 
-## Citation
+##  2. <a name='Citation'></a>Citation
 
 > Anthony Baire, Pierre Peterlongo
 [Back to sequences: find the origin of kmers](https://doi.org/10.1101/2023.10.26.564040). bioRxiv 
@@ -35,7 +44,7 @@ In this case 20 kmers are shared with the indexed kmers. This represents 6.13% o
 }
 ```
 
-## Install
+##  3. <a name='Install'></a>Install
 
 ```bash
 git clone https://github.com/pierrepeterlongo/back_to_sequences.git
@@ -45,7 +54,7 @@ RUSTFLAGS="-C target-cpu=native" cargo install --path .
 
 A test can be performed by running `cd tiny_test; sh tiny_test.sh; cd -`.
  
-## Quick benchmark (obtained with version v0.2.7)
+##  4. <a name='Quickbenchmarkobtainedwithversionv0.6.4'></a>Quick benchmark (obtained with version v0.6.4)
 This benchmark is reproducible by running `generate_data.sh` and then `bench.sh` in the `benchs` folder. 
 Presented results were obtained on 
 * the GenOuest platform on a node with 32 threads Xeon 2.2 GHz, denoted by "genouest" in the table below.
@@ -57,16 +66,15 @@ We queried: from 10,000 reads to 200 million reads (+ 1 billion on the cluster),
 
 | Number of reads | Time genouest | Time mac |  max RAM |
 |-----------------|----------|---|---|
-| 10,000          | 0.6s  | 0.5s | 0.13 GB |
-| 100,000         | 1.2s  | 0.8s | 0.13 GB |
-| 1,000,000       | 2.9s  | 3.5s | 0.13 GB |
-| 10,000,000      | 9.0s  | 11.2s | 0.13 GB |
-| 100,000,000     | 46.6s | 57.4 | 0.13 GB |
-| 200,000,000     | 1m24  | 1m47 | 0.13 GB |
-| 1 billion       | 7m11  | -    | 0.13 GB |
+| 10,000          | 0.4s  | 0.5s | 0.13 GB |
+| 100,000         | 0.7s  | 1.0s | 0.13 GB |
+| 1,000,000       | 2.8s  | 5.3s | 0.13 GB |
+| 10,000,000      | 11.1s  | 14.6s | 0.13 GB |
+| 100,000,000     | 1m10s | 1m03s | 0.13 GB |
+| 200,000,000     | 2m16s  | 2m03s | 0.13 GB |
 
-## Usage
-### Help
+##  5. <a name='Usage'></a>Usage
+###  5.1. <a name='Help'></a>Help
 ```	
 Back to sequences: find the origin of kmers
 
@@ -140,8 +148,8 @@ Options:
           Print version
 ```
 
-### Examples
-#### Basic 
+###  5.2. <a name='Examples'></a>Examples
+####  5.2.1. <a name='Basic'></a>Basic 
 ```bash
 back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta  --out-kmers counted_kmers.txt
 ```
@@ -151,14 +159,14 @@ The headers of each read is the same as in `reads.fasta`, plus the estimated rat
 
 If the `--out-kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `compacted_kmers.fasta` the number of times it was found in `filtered_reads.fasta` (displays only kmers whose counts are higher than 0).
 
-#### Using filters
+####  5.2.2. <a name='Usingfilters'></a>Using filters
 ```bash
 back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta  --out-kmers counted_kmers.txt --min-threshold 50 --max-threshold 70
 ```
 
 In this case only sequeces from `reads.fasta` that have more than 50% and at most 70% of their kmers in `compacted_kmers.fasta` are output.
 
-#### Specifying strands
+####  5.2.3. <a name='Specifyingstrands'></a>Specifying strands
 
 ```bash
 back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta --stranded
@@ -173,14 +181,14 @@ One may be interested in finding kmers from the reverse complement of the querie
 back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --out-sequences filtered_reads.fasta --stranded
 ```
 
-#### Reading sequences from standard input: 
+####  5.2.4. <a name='Readingsequencesfromstandardinput:'></a>Reading sequences from standard input: 
 
 ```bash
 cat reads.fasta | back_to_sequences --in-kmers compacted_kmers.fasta --out-sequences filtered_reads.fasta 
 ```
 Do not provide the `--in-sequences` if your input data are read from stdin.
 
-#### Using several input read sets. 
+####  5.2.5. <a name='Usingseveralinputreadsets.'></a>Using several input read sets. 
 Say you have three input read files `1.fa`, `2.fa`, `3.fa` to which you wish to apply `back_to_sequences`. 
 
 1. create an input and an output files:
@@ -193,7 +201,7 @@ echo 1_out.fa 2_out.fa 3_out.fa > out.fof
 back_to_sequences --in-filelist in.fof --in-kmers compacted_kmers.fasta --out-filelist out.fof 
 ```
 
-## Generate random data for testing
+##  6. <a name='Generaterandomdatafortesting'></a>Generate random data for testing
 You may be interested by generating a specific data set.
 ```bash
 # Generate 1 reference sequence of random length 50000 and minimum length 100
@@ -211,9 +219,9 @@ python3 scripts/extract_random_sequences.py --input reads.fasta --min_size 31 --
 # TODO
 * [X] Add a validation test (04/10/2023)
 * [X] Add a number of shared kmers per sequence instead of only their ratio 
-* [ ] ? add a threshold on the number of shared kmers
+* [X] Add a threshold on the number of shared kmers
 * [X] Parallelize the read extraction step
 * [ ] Thinks about a way to adapt this to protein sequences
 * [X] Add an option to set the size of the bloom filter used by kmindex
 * [ ] Provide a way to index and query more than one set $K$ of kmers
-* [ ] Output the strand of matched kmers
+* [X] Output the strand of matched kmers
