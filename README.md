@@ -131,6 +131,9 @@ Options:
           Query the reverse complement of reads. Useless without the --stranded option
       --no-low-complexity
           Do not index low complexity kmers (ie. with a Shannon entropy < 1.0)
+  -t, --threads <THREADS>
+          Number of threads
+             Note: if not provided, the number of threads is set to the number of logical cores [default: 0]
   -h, --help
           Print help
   -V, --version

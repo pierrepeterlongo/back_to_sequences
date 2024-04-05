@@ -98,6 +98,11 @@ pub struct Args {
     /// Do not index low complexity kmers (ie. with a Shannon entropy < 1.0)
     #[arg(long, default_value_t = false)]
     pub no_low_complexity: bool,
+
+    /// Number of threads
+    ///    Note: if not provided, the number of threads is set to the number of logical cores
+    #[arg(short, long, default_value_t = 0, verbatim_doc_comment)]
+    pub threads: usize,
 }
 
 /// check that a file name corresponds to a non empty file:

@@ -58,7 +58,8 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
     const CHUNK_SIZE: usize = 32; // number of records  
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
-
+    
+    
     struct Chunk<D> {
         id: usize,
         records: Vec<(usize, fxread::Record, Option<D>)>,

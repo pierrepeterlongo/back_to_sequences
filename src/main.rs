@@ -4,6 +4,7 @@
 
 // TODO : limit the number of threads with an option
 
+use std::env;
 
 /* crates use */
 use clap::Parser as _;
@@ -19,6 +20,11 @@ use back_to_sequences::kmer_counter::KmerCounterWithLog;
 fn main() {
     (|| {
         let args = Args::parse();
+        
+        // Set the number of threads for rayon
+        // If the number of threads is not set, rayon will use the number of logical cores 
+        env::set_var("RAYON_NUM_THREADS", args.threads.to_string());
+        
 
 
         // If out_sequences and out_kmers are not provided, we do nothing, we can quit
@@ -54,8 +60,7 @@ fn main() {
             ));
         }
 
-        
-
+    
         if args.out_sequences != "" && args.out_filelist != ""{
             return Err(eprintln!(
                 "Error: --out-sequences and --out-filelist are mutually exclusive"
@@ -74,8 +79,6 @@ fn main() {
                     "Error: --in-filelist and --output-kmer-positions are mutually exclusive (for now)"
                 ));
             }
-            
-
             back_to_multiple_sequences( 
                 args.in_filelist,
                 args.in_kmers,
