@@ -42,4 +42,6 @@
 * 0.6.2 04/04/2024
     * Validate option output-mapping-positions
     * Added tests for output-mapping-positions
+* 0.6.3 05/04/2024
+    * Added the "thread" option
     
