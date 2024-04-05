@@ -62,7 +62,7 @@ pub struct Args {
     pub counted_kmer_threshold: usize,
 
     /// If out_kmers is provided, either only count their number of occurrences (default)
-    /// or output their occurrence positions (read_id, position, strand)
+    /// or output their occurrence positions (read_id, position, strand) if this option is used
     #[arg(long, default_value_t = false, verbatim_doc_comment)]
     pub output_kmer_positions: bool,
 
@@ -86,6 +86,7 @@ pub struct Args {
     /// Thus by default, there is no limitation on the maximal number of kmers found in a sequence.
     #[arg(long, default_value_t = 100.0, verbatim_doc_comment)]
     pub max_threshold: f32,
+
 
     /// Used original kmer strand (else canonical kmers are considered)
     #[arg(long, default_value_t = false)]

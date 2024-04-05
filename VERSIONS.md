@@ -44,4 +44,6 @@
     * Added tests for output-mapping-positions
 * 0.6.3 05/04/2024
     * Added the "thread" option
+* 0.6.4 05/04/2024
+    * Update benchs
     
