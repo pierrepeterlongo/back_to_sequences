@@ -36,3 +36,4 @@ benchs/fof.*
 Cargo.lock
 log_benchs_synthetic.txt 
 settings.json
+bug

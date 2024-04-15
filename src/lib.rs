@@ -170,7 +170,7 @@ pub fn back_to_multiple_sequences(
 
     if output_mapping_positions { // if output_mapping_positions is true, we output the kmers with their count and mapping positions
     for (in_f, out_f) in input_files.iter().zip(output_files.iter()){
-        count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>( //TODO modify type wrt option
+        count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>( 
             in_f.to_string(),
             &kmer_set,
             kmer_size,

@@ -37,7 +37,7 @@ pub struct MachedCount {
 
 impl fmt::Display for MachedCount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, " {} {}", self.count, self.percent_shared_kmers())
+        write!(f, " {} {}", self.count, round(self.percent_shared_kmers(), 5))
     }
 }
 
@@ -54,15 +54,9 @@ impl MatchedSequence for MachedCount {
         self.count += 1;
     }
 
-    // fn to_string(&self) -> String{
-    //     format!(" {} {}", self.count, self.percent_shared_kmers())
-    // }
 
     fn percent_shared_kmers(&self) -> f32{
-        round(
-            (self.count as f32 / (self.mapped_position_size) as f32) * 100.0,
-            2,
-        )
+        100.0 * self.count as f32 / (self.mapped_position_size as f32)
     }
 
 }
@@ -96,34 +90,16 @@ impl MatchedSequence for MatchedSequencePositional {
         self.matched_positions.push((position, forward));
     }
 
-
-    // fn to_string(&self) -> String{
-    //     let mut result = format!(" {} {}", self.count, self.percent_shared_kmers());
-    //     for (position, forward) in self.matched_positions.iter(){
-    //         if *forward == true {
-    //             result.push_str(&format!(" {}", position));
-    //         }
-    //         else {
-    //             result.push_str(&format!(" -{}", position));
-    //         }
-    //         // result.push_str(&format!(" ({},{})", position, forward));
-    //     }
-    //     result // Return the result string
-    // }
-
     // TODO how to avoid to duplicate this code
     fn percent_shared_kmers(&self) -> f32{
-        round(
-            (self.count as f32 / (self.mapped_position_size) as f32) * 100.0,
-            2,
-        )
+        100.0 * self.count as f32 / (self.mapped_position_size as f32)
     }
 }
 
 
 impl fmt::Display for MatchedSequencePositional {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut result = format!(" {} {}", self.count, self.percent_shared_kmers());
+        let mut result = format!(" {} {}", self.count, round(self.percent_shared_kmers(), 5));
         for (position, forward) in self.matched_positions.iter(){
             if *forward == true {
                 result.push_str(&format!(" {}", position));

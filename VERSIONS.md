@@ -46,4 +46,8 @@
     * Added the "thread" option
 * 0.6.4 05/04/2024
     * Update benchs
+* 0.6.5 15/04/2024
+    * Fixed a filtering bug: As percentage of shared kmers were rounded to 2 decimals, and as we exclude the min-threshold value, 
+    some reads with shared kmers were discarded while 
+    they contained shared kmers. Now the tset is made before to round values + output values are rounded to 5 decimals.
     

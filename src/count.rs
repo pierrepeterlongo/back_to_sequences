@@ -267,7 +267,6 @@ pub fn shared_kmers_par<C, D>(
 ) -> D 
 where C: KmerCounter, D: MatchedSequence + Sized
     {
-        
     let mut result = D::new(read.len() - kmer_size + 1);
     if read.len() < kmer_size {
         return result;

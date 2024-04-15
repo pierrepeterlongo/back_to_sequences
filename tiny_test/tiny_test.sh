@@ -11,6 +11,9 @@
 ## low complexity
 # cat sequence_low_complexity.fa | back_to_sequences --in-kmers one_low_complexity_kmer.fa --out-sequences lc_no-low-complexity_ref.fa --no-low-complexity
 # cat sequence_low_complexity.fa | back_to_sequences --in-kmers one_low_complexity_kmer.fa --out-sequences lc_ref.fa
+## Mapping Positions
+# cat sequence.fa| back_to_sequences --in-kmers kmer.fa --out-sequences filtered_with_mapping_position_ref.fa  --output-mapping-positions --stranded
+# cat sequence.fa| back_to_sequences --in-kmers rc_kmer.fa --out-sequences filtered_with_mapping_position_rc_ref.fa  --output-mapping-positions --stranded
 
 
 back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads.fasta > /dev/null
