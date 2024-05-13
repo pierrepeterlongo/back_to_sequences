@@ -199,6 +199,39 @@ echo 1_out.fa 2_out.fa 3_out.fa > out.fof
 back_to_sequences --in-filelist in.fof --in-kmers compacted_kmers.fasta --out-filelist out.fof 
 ```
 
+#### 5.2.6 Output matching kmers
+##### Output the list of matching kmers with their number of occurrences
+`back_to_sequences` enables to output for each kmers in `in-kmers` set, its number of occurrences in the queried sequences. 
+
+```bash
+back_to_sequences --in-sequences sequence.fa --in-kmers kmer.fa --out-sequences /dev/null  --out-kmers out_kmers.txt
+```
+In this case the `out_kmers.txt` file contains, for each kmer from `kmer.fa` its number of occurrences in the `sequence.fa` file (canonical or not, depending on the usage of  the `--stranded` option). 
+
+
+
+##### Output the list of matching kmers with their position in sequences
+`back_to_sequences` enables to output for each kmers in `in-kmers` set, its positions in the queried sequences. 
+
+```bash
+back_to_sequences --in-sequences sequence.fa --in-kmers kmer.fa --out-sequences /dev/null  --out-kmers out_kmers.txt --output-kmer-positions
+```
+In this case the `out_kmers.txt` file contains, for each kmer from `kmer.fa` its occurrences in the `sequence.fa` file. An occurrence is given by a triplet `(sequence_id, position, strand)`.  
+- `sequence_id`: id (starting from 0) of the sequence from `sequence.fa` where the kmer occurs.
+- `position`: position (starting from 0) where the kmer occurs on the sequence
+- `strand`: false, except when querying the reverse complement of the sequences `--query-reverse` and using the `stranded` option.
+
+##### Outputs for each queried sequences its location and strand of shared kmers
+`back_to_sequences` enables to output for each queried sequences, the location and strand of its kmers shared with the `in-kmers` set.
+```bash
+ back_to_sequences --in-sequences sequence.fa --in-kmers kmer.fa --out-sequences out_sequences.fa
+ ```
+In this case the `out_sequences.fa` contains for each queried sequence its usual header (original header number and ratio of shared kmers with the `in-kmers` set) and additionaly, it shows the location (0-based) of shared kmers. For each location (including 0), the strand is indicated by nothing or a `-` character if the `--stranded` option is given. 
+
+
+
+
+
 ##  6. <a name='Generaterandomdatafortesting'></a>Generate random data for testing
 You may be interested by generating a specific data set.
 ```bash
