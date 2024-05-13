@@ -200,7 +200,7 @@ back_to_sequences --in-filelist in.fof --in-kmers compacted_kmers.fasta --out-fi
 ```
 
 #### 5.2.6 Output matching kmers
-##### Output the list of matching kmers with their number of occurrences
+##### 5.2.6.1 Output the list of matching kmers with their number of occurrences
 `back_to_sequences` enables to output for each kmers in `in-kmers` set, its number of occurrences in the queried sequences. 
 
 ```bash
@@ -210,7 +210,7 @@ In this case the `out_kmers.txt` file contains, for each kmer from `kmer.fa` its
 
 
 
-##### Output the list of matching kmers with their position in sequences
+##### 5.2.6.2 Output the list of matching kmers with their position in sequences
 `back_to_sequences` enables to output for each kmers in `in-kmers` set, its positions in the queried sequences. 
 
 ```bash
