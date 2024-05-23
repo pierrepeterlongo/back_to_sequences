@@ -155,7 +155,7 @@ back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads.fasta --
 The `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers in `compacted_kmers.fasta`.
 The headers of each read is the same as in `reads.fasta`, plus the estimated ratio of shared kmers and number of shared kmers.
 
-If the `--out-kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `compacted_kmers.fasta` the number of times it was found in `filtered_reads.fasta` (displays only kmers whose counts are higher than 0).
+If the `--out-kmers` option is used, the file `counted_kmers.txt` contains for each kmer in `compacted_kmers.fasta` the number of times it was found in `filtered_reads.fasta`.
 
 ####  5.2.2. <a name='Usingfilters'></a>Using filters
 ```bash
