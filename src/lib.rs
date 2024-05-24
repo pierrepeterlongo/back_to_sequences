@@ -5,6 +5,7 @@
 /* std use */
 use std::io::Write as _;
 
+use anyhow::Context;
 /* crates use */
 use atomic_counter::{AtomicCounter, RelaxedCounter};
 
@@ -30,7 +31,7 @@ pub fn back_to_sequences(
     stranded: bool,
     query_reverse: bool,
     no_low_complexity: bool,
-) -> Result<(), ()> {
+) -> anyhow::Result<()> {
     // check that in_fasta_reads is a non empty file if it exists:
     if !in_fasta_reads.is_empty() {
         cli::validate_non_empty_file(in_fasta_reads.clone())?;
@@ -44,9 +45,9 @@ pub fn back_to_sequences(
         stranded,
         no_low_complexity,
     )
-    .map_err(|e| eprintln!("Error indexing kmers: {}", e))?;
+    .context("Error indexing kmers")?;
 
-    if out_fasta_reads.len() > 0 {
+    if !out_fasta_reads.is_empty() {
         count::kmers_in_fasta_file_par(
             in_fasta_reads,
             &kmer_set,
@@ -69,7 +70,7 @@ pub fn back_to_sequences(
             kmer_size,
             stranded,
             query_reverse,
-        );
+        )?;
     }
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
     if !out_txt_kmers.is_empty() {
@@ -84,7 +85,7 @@ pub fn back_to_sequences(
             }
             Ok(())
         })()
-        .map_err(|e| eprintln!("Error writing the kmers file: {}", e))?;
+        .context("Error writing the kmers file: {}")?;
 
         println!(
             "kmers with their number of occurrences in the original sequences are in file {}",

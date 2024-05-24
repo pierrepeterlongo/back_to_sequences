@@ -9,7 +9,7 @@ authors = [
 	"Pierre Marijon <pierre@marijon.fr>",
 	]
 description = "Back to sequences: find the origin of kmers"
-rust-version = "1.65"
+rust-version = "1.70"
 
 readme = "Readme.md"
 license-file = "LICENSE"

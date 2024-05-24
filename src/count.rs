@@ -7,10 +7,10 @@ use std::io::{stdin, BufWriter, Write};
 
 /* crates use */
 use ahash::AHashMap as HashMap;
+use anyhow::Context as _;
+use atomic_counter::AtomicCounter;
 use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
-
-use atomic_counter::AtomicCounter as _;
 
 /* project use */
 use crate::sequence_normalizer::SequenceNormalizer;
@@ -32,7 +32,7 @@ pub fn kmers_in_fasta_file_par(
     max_threshold: f32,
     stranded: bool,
     query_reverse: bool,
-) -> Result<(), ()> {
+) -> anyhow::Result<()> {
     const CHUNK_SIZE: usize = 32; // number of records
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
@@ -45,10 +45,9 @@ pub fn kmers_in_fasta_file_par(
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
     let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
 
-    let mut output_file =
-        BufWriter::new(File::create(out_fasta).map_err(|e| {
-            eprintln!("Error: failed to open the sequence file for writing: {}", e)
-        })?);
+    let mut output_file = BufWriter::new(
+        File::create(out_fasta).context("Error: failed to open the sequence file for writing")?,
+    );
 
     let mut output_record =
         move |(record, nb_shared_kmers): (fxread::Record, Option<usize>)| -> std::io::Result<()> {
@@ -154,11 +153,11 @@ pub fn kmers_in_fasta_file_par(
     reader_thread
         .join()
         .unwrap()
-        .map_err(|e| eprintln!("Error reading the sequences: {}", e))?;
+        .context("Error reading the sequences")?;
     writer_thread
         .join()
         .unwrap()
-        .map_err(|e| eprintln!("Error writing the sequences: {}", e))
+        .context("Error writing the sequences")
 }
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
@@ -168,18 +167,13 @@ pub fn only_kmers_in_fasta_file_par(
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
-) {
+) -> anyhow::Result<()> {
     const CHUNK_SIZE: usize = 32; // number of records
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
-    const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
-    struct Chunk {
-        id: usize,
-        records: Vec<(fxread::Record, Option<usize>)>,
-    }
+    type Chunk = Vec<(fxread::Record, Option<usize>)>;
 
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk>(INPUT_CHANNEL_SIZE);
-    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk>(OUTPUT_CHANNEL_SIZE);
 
     let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
         let mut reader = if file_name.is_empty() {
@@ -188,7 +182,7 @@ pub fn only_kmers_in_fasta_file_par(
             initialize_reader(&file_name).unwrap()
         };
 
-        for id in 0.. {
+        for _ in 0.. {
             let mut vec = Vec::with_capacity(CHUNK_SIZE);
             for _ in 0..CHUNK_SIZE {
                 match reader.next_record()? {
@@ -196,18 +190,18 @@ pub fn only_kmers_in_fasta_file_par(
                     Some(record) => vec.push((record, None)),
                 }
             }
-            if vec.is_empty() || input_tx.send(Chunk { id, records: vec }).is_err() {
+            if vec.is_empty() || input_tx.send(vec).is_err() {
                 return Ok(());
             }
         }
         unreachable!()
     });
 
-    let _ = input_rx
+    input_rx
         .into_iter()
         .par_bridge()
         .for_each(move |mut chunk| {
-            for (record, nb_shared_kmers) in &mut chunk.records {
+            for (record, nb_shared_kmers) in &mut chunk {
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
@@ -219,13 +213,12 @@ pub fn only_kmers_in_fasta_file_par(
                     stranded,
                 ));
             }
-            // output_tx.send(chunk)
         });
 
     reader_thread
         .join()
         .unwrap()
-        .map_err(|e| eprintln!("Error reading the sequences: {}", e));
+        .context("Error reading the sequences")
 }
 
 /// count the number of indexed kmers in a given read

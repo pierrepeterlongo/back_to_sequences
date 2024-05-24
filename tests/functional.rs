@@ -1,14 +1,12 @@
 //! Functional test
 
 /* std use */
+use std::io::Read as _;
 
 /* crate use */
+use biotest::Format;
 
 /* project use */
-
-use std::io::{Read, Write};
-
-use biotest::Format;
 
 #[test]
 fn help() -> std::result::Result<(), anyhow::Error> {

@@ -4,7 +4,6 @@
 
 /* crates use */
 use ahash::AHashMap as HashMap;
-use atomic_counter::AtomicCounter;
 use entropy::shannon_entropy;
 use fxread::initialize_reader;
 
@@ -51,14 +50,14 @@ pub fn index_kmers<T: Default>(
             // for mut i in 0..(acgt_sequence.len() - kmer_size + 1) {
             let kmer = &acgt_sequence[i..(i + kmer_size)];
             let first_non_acgt = first_non_acgt(kmer);
-            if first_non_acgt.0 == false {
+            if !first_non_acgt.0 {
                 // If the kmer contains a non acgt letter, we jump to the next possible kmer
                 i = i + first_non_acgt.1 + 1;
                 continue;
             } else {
                 // If the entropy is too low, the kmer is not inserted
                 if no_low_complexity && shannon_entropy(kmer) < 1.0 {
-                    i = i + 1;
+                    i += 1;
                     continue;
                 }
                 kmer_set.insert(
@@ -68,7 +67,7 @@ pub fn index_kmers<T: Default>(
                     Default::default(), // RelaxedCounter::new(0)
                 );
             }
-            i = i + 1;
+            i += 1;
         }
     }
     println!(
@@ -86,6 +85,7 @@ mod tests {
     use std::io::Write as _;
 
     /* crate use */
+    use atomic_counter::AtomicCounter as _;
     use biotest::values::Generate as _;
     use biotest::Format as _;
 
