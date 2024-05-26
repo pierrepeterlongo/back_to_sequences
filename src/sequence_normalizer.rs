@@ -27,7 +27,6 @@ impl<'a> SequenceNormalizer<'a> {
     ///     - `Some(true)` to get the reverse complement
     ///     - `None` to get the canonical sequence
     pub fn new(raw: &'a [u8], required_reverse_complement: Option<bool>) -> Self {
-
         Self {
             raw,
             reverse_complement: required_reverse_complement.unwrap_or_else(|| {

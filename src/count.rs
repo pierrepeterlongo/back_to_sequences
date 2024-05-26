@@ -9,7 +9,6 @@ use std::io::{stdin, BufWriter, Write};
 /* crates use */
 use ahash::AHashMap as HashMap;
 use anyhow::Context as _;
-use atomic_counter::AtomicCounter;
 use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
 
@@ -53,7 +52,7 @@ pub fn kmers_in_fasta_file_par<T, D>(
     stranded: bool,
     query_reverse: bool,
     map_both_strands: bool,
-) -> Result<(), ()>
+) -> anyhow::Result<()>
 where
     T: KmerCounter,
     D: MatchedSequence + Send + 'static,
@@ -198,6 +197,7 @@ pub fn only_kmers_in_fasta_file_par<T, D>(
 {
     const CHUNK_SIZE: usize = 32; // number of records
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
+    const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
     struct Chunk<D> {
         id: usize,
@@ -272,10 +272,10 @@ where
     C: KmerCounter,
     D: MatchedSequence + Sized,
 {
-    let mut result = D::new(read.len() - kmer_size + 1);
     if read.len() < kmer_size {
-        return result;
+        return D::new(0);
     }
+    let mut result = D::new(read.len() - kmer_size + 1);
     let reverse_complement = if stranded { Some(false) } else { None };
 
     let mut buf = [0].repeat(kmer_size);
@@ -297,7 +297,7 @@ where
                 });
             }
         }
-        return result;
+        result
     } else {
         // if we map both strands, we map the kmer and its reverse complement
         // Note that if --stranded is not set, the mapping is always detected in forward strand
@@ -327,15 +327,19 @@ where
                 }
             }
         }
-        return result;
+        result
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::matched_sequences;
+    /* crate use */
+    use biotest::values::Generate as _;
+    use biotest::Format as _;
 
+    /* project use */
     use super::*;
+    use crate::matched_sequences;
 
     #[test]
     fn test_rev_comp() -> anyhow::Result<()> {
@@ -347,36 +351,44 @@ mod tests {
 
     #[test]
     fn shared_kmers() -> anyhow::Result<()> {
-        let mut rng = crate::tests::rand();
+        let kmer_size = 15;
+        let seq_len = 150;
+
+        let mut rng = biotest::rand();
+        let s_generator = biotest::Fasta::builder().sequence_len(seq_len).build()?;
+        let k_generator = biotest::Fasta::builder().sequence_len(kmer_size).build()?;
+
+        let mut data = vec![];
+        s_generator.records(&mut data, &mut rng, 20)?;
+        let sequence = &data[data.len() - seq_len..].to_vec();
+
+        let mut data = vec![];
+        k_generator.records(&mut data, &mut rng, 100)?;
+        data.extend(b">sequence\n");
+        data.extend(sequence);
 
         let temp_dir = tempfile::tempdir()?;
         let temp_path = temp_dir.path();
-
         let kmers_in_path = temp_path.join("kmers_in.fasta");
-        let kmer_size = 42;
-        let sequence = crate::tests::sequence(&mut rng, 16);
-        let mut data = crate::tests::fasta::records(&mut rng, 5, 16, 5);
-        data.extend(b">read_test\n");
-        data.extend(sequence.clone());
 
-        crate::tests::io::write_buffer(&data, &kmers_in_path)?;
+        std::fs::File::create(&kmers_in_path)?.write_all(&data)?;
 
         let (kmer_set, _) = crate::kmer_hash::index_kmers::<atomic_counter::RelaxedCounter>(
-            kmers_in_path.into_os_string().into_string().unwrap(),
-            5,
+            kmers_in_path.display().to_string(),
+            kmer_size,
             false,
             false,
         )?;
 
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
-                &kmer_set, &sequence, 42, kmer_size, false, false
+                &kmer_set, sequence, 42, kmer_size, false, false
             )
             .count,
-            11
+            135
         );
 
-        let random_sequence = crate::tests::sequence(&mut rng, 16);
+        let random_sequence = biotest::values::Nucleotides::Dna.generate(&mut rng, 150)?;
 
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
@@ -388,10 +400,10 @@ mod tests {
                 false
             )
             .count,
-            1
+            0
         );
 
-        let small_sequence = crate::tests::sequence(&mut rng, 4);
+        let small_sequence = biotest::values::Nucleotides::Dna.generate(&mut rng, 1)?;
 
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
@@ -405,54 +417,6 @@ mod tests {
             .count,
             0
         );
-
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    /* crate use */
-    use biotest::values::Generate as _;
-    use biotest::Format as _;
-
-    /* project use */
-    use super::*;
-
-    #[test]
-    fn shared_kmers() -> anyhow::Result<()> {
-        let mut rng = biotest::rand();
-        let generator = biotest::Fasta::builder().sequence_len(15).build()?;
-
-        let mut data = vec![];
-        generator.record(&mut data, &mut rng)?;
-        data.push(b'\n');
-
-        let sequence = &data[data.len() - 15..].to_vec();
-        generator.records(&mut data, &mut rng, 15)?;
-
-        let temp_dir = tempfile::tempdir()?;
-        let temp_path = temp_dir.path();
-        let kmers_in_path = temp_path.join("kmers_in.fasta");
-
-        std::fs::File::create(&kmers_in_path)?.write_all(&data)?;
-
-        let (kmer_set, _) = crate::kmer_hash::index_kmers::<atomic_counter::RelaxedCounter>(
-            kmers_in_path.into_os_string().into_string().unwrap(),
-            5,
-            false,
-            false,
-        )?;
-
-        assert_eq!(shared_kmers_par(&kmer_set, &sequence, 5, false), 10);
-
-        let random_sequence = biotest::values::Nucleotides::Dna.generate(&mut rng, 16)?;
-
-        assert_eq!(shared_kmers_par(&kmer_set, &random_sequence, 5, false), 4);
-
-        let small_sequence = biotest::values::Nucleotides::Dna.generate(&mut rng, 1)?;
-
-        assert_eq!(shared_kmers_par(&kmer_set, &small_sequence, 5, false), 0);
 
         Ok(())
     }
