@@ -11,6 +11,9 @@
 ## low complexity
 # cat sequence_low_complexity.fa | back_to_sequences --in-kmers one_low_complexity_kmer.fa --out-sequences lc_no-low-complexity_ref.fa --no-low-complexity
 # cat sequence_low_complexity.fa | back_to_sequences --in-kmers one_low_complexity_kmer.fa --out-sequences lc_ref.fa
+## Mapping Positions
+# cat sequence.fa| back_to_sequences --in-kmers kmer.fa --out-sequences filtered_with_mapping_position_ref.fa  --output-mapping-positions --stranded
+# cat sequence.fa| back_to_sequences --in-kmers rc_kmer.fa --out-sequences filtered_with_mapping_position_rc_ref.fa  --output-mapping-positions --stranded
 
 
 back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads.fasta > /dev/null
@@ -140,5 +143,23 @@ if [ $? -ne 0 ]; then
 fi
 
 rm -f lc_no-low-complexity_res.fa lc_res.fa
+
+## Mapping Positions
+cat sequence.fa| back_to_sequences --in-kmers kmer.fa --out-sequences filtered_with_mapping_position.fa  --output-mapping-positions --stranded  > /dev/null
+cat sequence.fa| back_to_sequences --in-kmers rc_kmer.fa --out-sequences filtered_with_mapping_position_rc.fa  --output-mapping-positions --stranded  > /dev/null
+
+diff filtered_with_mapping_position.fa filtered_with_mapping_position_ref.fa
+if [ $? -ne 0 ]; then
+    echo "filtered_with_mapping_position.fa and filtered_with_mapping_position_ref.fa are different"
+    exit 1
+fi
+
+diff filtered_with_mapping_position_rc.fa filtered_with_mapping_position_rc_ref.fa
+if [ $? -ne 0 ]; then
+    echo "filtered_with_mapping_position_rc.fa and filtered_with_mapping_position_rc_ref.fa are different"
+    exit 1
+fi
+
+rm -f filtered_with_mapping_position.fa filtered_with_mapping_position_rc.fa
 
 echo "All tests passed"

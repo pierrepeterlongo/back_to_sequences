@@ -28,3 +28,26 @@
     * possiblity to not output filtered reads. In this case only counted kmers are output. 
 * 0.2.13. 23/01/2024:
     * prints all kmers from kmer_set, whaterver their counts count
+* 0.3.0 16/02/2024
+    * Add the counted_kmer_threshold option
+* 0.4.0 23/02/2024
+    * Add the possibility to filter several input datasets
+* 0.5.0 21/03/2024
+    * Added the --output-kmer-positions option
+    * code refactoring
+* 0.5.1 25/03/2024
+    * Clarify the options
+* 0.6.1 03/04/2024
+    * Added option output-mapping-positions
+* 0.6.2 04/04/2024
+    * Validate option output-mapping-positions
+    * Added tests for output-mapping-positions
+* 0.6.3 05/04/2024
+    * Added the "thread" option
+* 0.6.4 05/04/2024
+    * Update benchs
+* 0.6.5 15/04/2024
+    * Fixed a filtering bug: As percentage of shared kmers were rounded to 2 decimals, and as we exclude the min-threshold value, 
+    some reads with shared kmers were discarded while 
+    they contained shared kmers. Now the tset is made before to round values + output values are rounded to 5 decimals.
+    

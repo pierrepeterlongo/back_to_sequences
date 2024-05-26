@@ -1,0 +1,3 @@
+[submodule "thirdparty/kmindex"]
+	path = thirdparty/kmindex
+	url = https://github.com/tlemane/kmindex
