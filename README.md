@@ -219,7 +219,9 @@ back_to_sequences --in-sequences sequence.fa --in-kmers kmer.fa --out-sequences 
 In this case the `out_kmers.txt` file contains, for each kmer from `kmer.fa` its occurrences in the `sequence.fa` file. An occurrence is given by a triplet `(sequence_id, position, strand)`.  
 - `sequence_id`: id (starting from 0) of the sequence from `sequence.fa` where the kmer occurs.
 - `position`: position (starting from 0) where the kmer occurs on the sequence
-- `strand`: false, except when querying the reverse complement of the sequences `--query-reverse` and using the `stranded` option.
+- `strand`: orientation of the canonical version of the queried kmer in the sequence. This is a bit misleading: 
+    - without the ‘stranded’ option, the position of the canonical version of the kmer is given. This version can be found in the same direction (true) or in the reverse complement direction (false).
+    - with the ‘stranded’ option, the position of the requested version of the kmer is given. Only the forward version of this kmer is found. 
 
 ##### 5.2.6.3 Output for each queried sequence its location and strand of shared kmers
 `back_to_sequences` enables to output for each queried sequence, the location and strand of its kmers shared with the `in-kmers` set.
