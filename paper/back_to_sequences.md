@@ -1,33 +1,3 @@
----
-abstract: |
-  A vast majority of bioinformatics tools dedicated to the treatment of
-  raw sequencing data heavily use the concept of $k$-mers, which are
-  words of length $k$. This enables us to reduce the redundancy of data
-  (and thus the memory pressure), to discard sequencing errors, and to
-  dispose of objects of fixed size that can be easily manipulated and
-  compared to each other. A drawback is that the link between each
-  $k$-mer and the original set of sequences to which it belongs is lost.
-  Given the volume of data considered in this context, finding back this
-  association is costly. In this work, we present "`back_to_sequences`",
-  a simple tool designed to index a set of $k$-mers of interest and to
-  stream a set of sequences, extracting those containing at least one of
-  the indexed $k$-mer. In addition, the occurrences of $k$-mers in the
-  sequences can be provided. Our results show that `back_to_sequences`
-  streams $\approx200$ short read per millisecond, allowing to search
-  $k$-mers in hundreds of millions of reads in a matter of a few
-  minutes.
-
-  **Availability:**
-  [github.com/pierrepeterlongo/back_to_sequences](github.com/pierrepeterlongo/back_to_sequences){.uri}
-author:
-- Anthony Baire
-- Pierre Marijon
-- Pierre Peterlongo
-bibliography:
-- references.bib
-title: "Back to sequences: find the origin of $k$-mers"
----
-
 # Introduction
 
 In the 2010s, following the emergence of next-generation sequencing
