@@ -63,7 +63,7 @@ impl MatchedSequence for MachedCount {
     }
 }
 
-///
+/// a read matched by a kmer, store kmer count and position of matched kmers
 pub struct MatchedSequencePositional {
     /// size of the positions where a match can occur (size_seq - k +1)
     pub mapped_position_size: usize,

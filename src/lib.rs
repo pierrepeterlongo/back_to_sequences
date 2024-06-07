@@ -27,6 +27,7 @@ use crate::kmer_counter::KmerCounter;
 
 /// Extract sequences that contain some kmers and
 /// output the kmers that occur in the reads with their number of occurrences
+#[allow(clippy::too_many_arguments)]
 pub fn back_to_sequences<T: KmerCounter>(
     in_fasta_reads: String,
     in_fasta_kmers: String,
@@ -98,7 +99,7 @@ pub fn back_to_sequences<T: KmerCounter>(
             kmer_size,
             stranded,
             query_reverse,
-        );
+        )?;
     }
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
     if !out_txt_kmers.is_empty() {
@@ -127,6 +128,7 @@ pub fn back_to_sequences<T: KmerCounter>(
 /// output the kmers that occur in the reads with their number of occurrences
 /// but instead of using a single input file takes a txt file with the path
 /// of multiple files
+#[allow(clippy::too_many_arguments)]
 pub fn back_to_multiple_sequences(
     in_fasta_filenames: String,
     in_fasta_kmers: String,

@@ -38,7 +38,7 @@ integer-encoding = { version = "4.0" }
 
 [dev-dependencies]
 assert_cmd      = { version = "2"}
-biotest         = { version = "0.1", features = ["fasta", "fastq"] }
+biotest         = { version = "0.2", features = ["fasta", "fastq", "sequence"] }
 rand            = { version = "0.8" }
 tempfile        = { version = "3" }
 

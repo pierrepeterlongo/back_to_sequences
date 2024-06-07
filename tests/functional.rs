@@ -2,6 +2,7 @@
 
 /* std use */
 use std::io::Read as _;
+use std::io::Write as _;
 
 /* crate use */
 use biotest::Format;
@@ -221,6 +222,395 @@ kmers with their number of occurrences in the original sequences are in file {}
     std::fs::File::open(&reads_out_path)?.read_to_end(&mut reads_out_content)?;
     let mut reads_out_truth = vec![];
     std::fs::File::open("tests/data/reads_out.fasta")?.read_to_end(&mut reads_out_truth)?;
+
+    assert_eq!(reads_out_content, reads_out_truth);
+
+    // check kmers output
+    let mut kmers_out_content = vec![];
+    std::fs::File::open(&kmers_out_path)?.read_to_end(&mut kmers_out_content)?;
+    kmers_out_content.sort_unstable();
+
+    let mut kmers_out_truth = vec![];
+    std::fs::File::open("tests/data/kmers_out.csv")?.read_to_end(&mut kmers_out_truth)?;
+    kmers_out_truth.sort_unstable();
+
+    assert_eq!(kmers_out_content, kmers_out_truth);
+
+    Ok(())
+}
+
+#[test]
+fn no_output_fasta() -> std::result::Result<(), anyhow::Error> {
+    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut rng = biotest::rand();
+    let s_generate = biotest::Fasta::builder().build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+
+    let temp_dir = tempfile::tempdir()?;
+    let temp_path = temp_dir.path();
+    let kmers_in_path = temp_path.join("kmers_in.fasta");
+    let kmers_out_path = temp_path.join("kmers_out.fasta");
+
+    let mut reads = vec![];
+    s_generate.records(&mut reads, &mut rng, 100)?;
+    k_generate.create(&kmers_in_path, &mut rng, 500)?;
+
+    cmd.args([
+        "-k",
+        "10",
+        "--in-kmers",
+        &format!("{}", kmers_in_path.display()),
+        "--out-kmers",
+        &format!("{}", kmers_out_path.display()),
+    ])
+    .write_stdin(reads);
+
+    let out = format!(
+        "Indexed 499 kmers, each of size 10
+No output file provided, only the kmers with their count is output
+kmers with their number of occurrences in the original sequences are in file {}
+",
+        kmers_out_path.display(),
+    );
+
+    let assert = cmd.assert().stdout(out);
+
+    assert.success();
+
+    // check kmers output
+    let mut kmers_out_content = vec![];
+    std::fs::File::open(&kmers_out_path)?.read_to_end(&mut kmers_out_content)?;
+    kmers_out_content.sort_unstable();
+
+    let mut kmers_out_truth = vec![];
+    std::fs::File::open("tests/data/kmers_out.csv")?.read_to_end(&mut kmers_out_truth)?;
+    kmers_out_truth.sort_unstable();
+
+    assert_eq!(kmers_out_content, kmers_out_truth);
+
+    Ok(())
+}
+
+#[test]
+fn kmer_position_fasta() -> std::result::Result<(), anyhow::Error> {
+    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut rng = biotest::rand();
+    let s_generate = biotest::Fasta::builder().build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+
+    let temp_dir = tempfile::tempdir()?;
+    let temp_path = temp_dir.path();
+    let kmers_in_path = temp_path.join("kmers_in.fasta");
+    let kmers_out_path = temp_path.join("kmers_out.fasta");
+    let reads_out_path = temp_path.join("reads_out.fasta");
+
+    let mut reads = vec![];
+    s_generate.records(&mut reads, &mut rng, 100)?;
+    k_generate.create(&kmers_in_path, &mut rng, 500)?;
+
+    cmd.args([
+        "-k",
+        "10",
+        "--in-kmers",
+        &format!("{}", kmers_in_path.display()),
+        "--out-kmers",
+        &format!("{}", kmers_out_path.display()),
+        "--out-sequences",
+        &format!("{}", reads_out_path.display()),
+        "--output-kmer-positions",
+    ])
+    .write_stdin(reads);
+
+    let out = format!(
+        "Indexed 499 kmers, each of size 10
+Filtered sequences with exact kmer count are in file {}
+kmers with their number of occurrences in the original sequences are in file {}
+",
+        reads_out_path.display(),
+        kmers_out_path.display(),
+    );
+
+    let assert = cmd.assert().stdout(out);
+
+    assert.success();
+
+    // check reads output
+    let mut reads_out_content = vec![];
+    std::fs::File::open(&reads_out_path)?.read_to_end(&mut reads_out_content)?;
+    let mut reads_out_truth = vec![];
+    std::fs::File::open("tests/data/reads_out.fasta")?.read_to_end(&mut reads_out_truth)?;
+
+    assert_eq!(reads_out_content, reads_out_truth);
+
+    // check kmers output
+    let mut kmers_out_content = vec![];
+    std::fs::File::open(&kmers_out_path)?.read_to_end(&mut kmers_out_content)?;
+    kmers_out_content.sort_unstable();
+
+    let mut kmers_out_truth = vec![];
+    std::fs::File::open("tests/data/kmers_out_pos.csv")?.read_to_end(&mut kmers_out_truth)?;
+    kmers_out_truth.sort_unstable();
+
+    assert_eq!(kmers_out_content, kmers_out_truth);
+
+    Ok(())
+}
+
+#[test]
+fn kmer_mapping_position_fasta() -> std::result::Result<(), anyhow::Error> {
+    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut rng = biotest::rand();
+    let s_generate = biotest::Fasta::builder().build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+
+    let temp_dir = tempfile::tempdir()?;
+    let temp_path = temp_dir.path();
+    let kmers_in_path = temp_path.join("kmers_in.fasta");
+    let kmers_out_path = temp_path.join("kmers_out.fasta");
+    let reads_out_path = temp_path.join("reads_out.fasta");
+
+    let mut reads = vec![];
+    s_generate.records(&mut reads, &mut rng, 100)?;
+    k_generate.create(&kmers_in_path, &mut rng, 500)?;
+
+    cmd.args([
+        "-k",
+        "10",
+        "--in-kmers",
+        &format!("{}", kmers_in_path.display()),
+        "--out-kmers",
+        &format!("{}", kmers_out_path.display()),
+        "--out-sequences",
+        &format!("{}", reads_out_path.display()),
+        "--output-kmer-positions",
+        "--output-mapping-positions",
+    ])
+    .write_stdin(reads);
+
+    let out = format!(
+        "Indexed 499 kmers, each of size 10
+Filtered sequences with exact kmer count and mapping positions are in file {}
+kmers with their number of occurrences in the original sequences are in file {}
+",
+        reads_out_path.display(),
+        kmers_out_path.display(),
+    );
+
+    let assert = cmd.assert().stdout(out);
+
+    assert.success();
+
+    // check kmers output
+    let mut kmers_out_content = vec![];
+    std::fs::File::open(&kmers_out_path)?.read_to_end(&mut kmers_out_content)?;
+    kmers_out_content.sort_unstable();
+
+    let mut kmers_out_truth = vec![];
+    std::fs::File::open("tests/data/kmers_out_pos_mapping.csv")?
+        .read_to_end(&mut kmers_out_truth)?;
+    kmers_out_truth.sort_unstable();
+
+    assert_eq!(kmers_out_content, kmers_out_truth);
+
+    Ok(())
+}
+
+#[test]
+fn multi_inout_not_same_length() -> std::result::Result<(), anyhow::Error> {
+    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+
+    let temp_dir = tempfile::tempdir()?;
+    let temp_path = temp_dir.path();
+
+    let kmers_in_path = temp_path.join("kmers_in.fasta");
+    let kmers_out_path = temp_path.join("kmers_out.fasta");
+    let in_filelist = temp_path.join("in_file.lst");
+    let out_filelist = temp_path.join("out_file.lst");
+
+    std::fs::File::create(kmers_in_path.clone())?.write_all(b">1\nA")?;
+    std::fs::File::create(in_filelist.clone())?.write_all(b"test1\ntest2\ntest3")?;
+    std::fs::File::create(out_filelist.clone())?.write_all(b"test1\n")?;
+
+    cmd.args([
+        "-k",
+        "10",
+        "--in-kmers",
+        &format!("{}", kmers_in_path.display()),
+        "--out-kmers",
+        &format!("{}", kmers_out_path.display()),
+        "--in-filelist",
+        &format!("{}", in_filelist.display()),
+        "--out-filelist",
+        &format!("{}", out_filelist.display()),
+    ]);
+
+    let assert = cmd
+        .assert()
+        .stderr("Error: Error: the number of input files and output files must be the same\n");
+
+    assert.failure();
+
+    Ok(())
+}
+
+#[test]
+fn multi_fasta() -> std::result::Result<(), anyhow::Error> {
+    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut rng = biotest::rand();
+    let s_generate = biotest::Fasta::builder().build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+
+    let temp_dir = tempfile::tempdir()?;
+    let temp_path = temp_dir.path();
+    let kmers_in_path = temp_path.join("kmers_in.fasta");
+    let kmers_out_path = temp_path.join("kmers_out.fasta");
+    let reads_in_path1 = temp_path.join("reads_in1.fasta");
+    let reads_in_path2 = temp_path.join("reads_in2.fasta");
+    let reads_out_path1 = temp_path.join("reads_out1.fasta");
+    let reads_out_path2 = temp_path.join("reads_out2.fasta");
+    let in_filelist = temp_path.join("in_file.lst");
+    let out_filelist = temp_path.join("out_file.lst");
+
+    std::fs::File::create(in_filelist.clone())?.write_all(
+        &format!("{}\n{}", reads_in_path1.display(), reads_in_path2.display()).into_bytes(),
+    )?;
+    std::fs::File::create(out_filelist.clone())?.write_all(
+        &format!(
+            "{}\n{}",
+            reads_out_path1.display(),
+            reads_out_path2.display()
+        )
+        .into_bytes(),
+    )?;
+
+    s_generate.create(&reads_in_path1, &mut rng, 50)?;
+    s_generate.create(&reads_in_path2, &mut rng, 50)?;
+    k_generate.create(&kmers_in_path, &mut rng, 500)?;
+
+    cmd.args([
+        "-k",
+        "10",
+        "--in-kmers",
+        &format!("{}", kmers_in_path.display()),
+        "--in-filelist",
+        &format!("{}", in_filelist.display()),
+        "--out-filelist",
+        &format!("{}", out_filelist.display()),
+        "--out-kmers",
+        &format!("{}", kmers_out_path.display()),
+    ]);
+
+    let out = format!(
+        "Indexed 499 kmers, each of size 10
+Filtered sequences from {} with exact kmer count are in files specified at {}
+Filtered sequences from {} with exact kmer count are in files specified at {}
+kmers with their number of occurrences in the original sequences are in file {}
+",
+        reads_in_path1.display(),
+        reads_out_path1.display(),
+        reads_in_path2.display(),
+        reads_out_path2.display(),
+        kmers_out_path.display(),
+    );
+
+    let assert = cmd.assert().stdout(out);
+
+    assert.success();
+
+    // check reads output
+    let mut reads_out_content = vec![];
+    std::fs::File::open(&reads_out_path1)?.read_to_end(&mut reads_out_content)?;
+    std::fs::File::open(&reads_out_path2)?.read_to_end(&mut reads_out_content)?;
+    let mut reads_out_truth = vec![];
+    std::fs::File::open("tests/data/reads_out.fasta")?.read_to_end(&mut reads_out_truth)?;
+
+    assert_eq!(reads_out_content, reads_out_truth);
+
+    // check kmers output
+    let mut kmers_out_content = vec![];
+    std::fs::File::open(&kmers_out_path)?.read_to_end(&mut kmers_out_content)?;
+    kmers_out_content.sort_unstable();
+
+    let mut kmers_out_truth = vec![];
+    std::fs::File::open("tests/data/kmers_out.csv")?.read_to_end(&mut kmers_out_truth)?;
+    kmers_out_truth.sort_unstable();
+
+    assert_eq!(kmers_out_content, kmers_out_truth);
+
+    Ok(())
+}
+
+#[test]
+fn multi_fasta_mapping() -> std::result::Result<(), anyhow::Error> {
+    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut rng = biotest::rand();
+    let s_generate = biotest::Fasta::builder().build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+
+    let temp_dir = tempfile::tempdir()?;
+    let temp_path = temp_dir.path();
+    let kmers_in_path = temp_path.join("kmers_in.fasta");
+    let kmers_out_path = temp_path.join("kmers_out.fasta");
+    let reads_in_path1 = temp_path.join("reads_in1.fasta");
+    let reads_in_path2 = temp_path.join("reads_in2.fasta");
+    let reads_out_path1 = temp_path.join("reads_out1.fasta");
+    let reads_out_path2 = temp_path.join("reads_out2.fasta");
+    let in_filelist = temp_path.join("in_file.lst");
+    let out_filelist = temp_path.join("out_file.lst");
+
+    std::fs::File::create(in_filelist.clone())?.write_all(
+        &format!("{}\n{}", reads_in_path1.display(), reads_in_path2.display()).into_bytes(),
+    )?;
+    std::fs::File::create(out_filelist.clone())?.write_all(
+        &format!(
+            "{}\n{}",
+            reads_out_path1.display(),
+            reads_out_path2.display()
+        )
+        .into_bytes(),
+    )?;
+
+    s_generate.create(&reads_in_path1, &mut rng, 50)?;
+    s_generate.create(&reads_in_path2, &mut rng, 50)?;
+    k_generate.create(&kmers_in_path, &mut rng, 500)?;
+
+    cmd.args([
+        "-k",
+        "10",
+        "--in-kmers",
+        &format!("{}", kmers_in_path.display()),
+        "--in-filelist",
+        &format!("{}", in_filelist.display()),
+        "--out-filelist",
+        &format!("{}", out_filelist.display()),
+        "--out-kmers",
+        &format!("{}", kmers_out_path.display()),
+        "--output-mapping-positions",
+    ]);
+
+    let out = format!(
+        "Indexed 499 kmers, each of size 10
+Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}
+Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}
+kmers with their number of occurrences in the original sequences are in file {}
+",
+        reads_in_path1.display(),
+        reads_out_path1.display(),
+        reads_in_path2.display(),
+        reads_out_path2.display(),
+        kmers_out_path.display(),
+    );
+
+    let assert = cmd.assert().stdout(out);
+
+    assert.success();
+
+    // check reads output
+    let mut reads_out_content = vec![];
+    std::fs::File::open(&reads_out_path1)?.read_to_end(&mut reads_out_content)?;
+    std::fs::File::open(&reads_out_path2)?.read_to_end(&mut reads_out_content)?;
+    let mut reads_out_truth = vec![];
+    std::fs::File::open("tests/data/reads_out_mapping.fasta")?.read_to_end(&mut reads_out_truth)?;
 
     assert_eq!(reads_out_content, reads_out_truth);
 
