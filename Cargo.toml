@@ -9,34 +9,38 @@ authors = [
 	"Pierre Marijon <pierre@marijon.fr>",
 	]
 description = "Back to sequences: find the origin of kmers"
-rust-version = "1.65"
+rust-version = "1.70"
 
 readme = "Readme.md"
 license-file = "LICENSE"
 
 [dependencies]
 # Error management
-anyhow         = { version = "1" }
+anyhow           = { version = "1" }
 
 # CLI parsing
-clap           = { version = "4", features = ["derive", "cargo"] }
+clap             = { version = "4", features = ["derive", "cargo"] }
 
 # File parsing
-fxread         = { version = "0.2" }
+fxread           = { version = "0.2" }
+
+# Parallel
+rayon            = { version = "1" }
 
 # Other
-auto_enums     = { version = "0.8" }
-atomic-counter = { version = "1" }
-rayon          = { version = "1" }
-ctor           = { version = "0.2" }
-ahash          = { version = "0.8.6" }
-entropy	       = { version = "0.4"}
+ahash            = { version = "0.8.6" }
+atomic-counter   = { version = "1" }
+auto_enums       = { version = "0.8" }
+ctor             = { version = "0.2" }
+entropy	         = { version = "0.4"}
 integer-encoding = { version = "4.0" }
 
 
 [dev-dependencies]
-rand          = { version = "0.8" }
-tempfile      = { version = "3" }
+assert_cmd      = { version = "2"}
+biotest         = { version = "0.2", features = ["fasta", "fastq", "sequence"] }
+rand            = { version = "0.8" }
+tempfile        = { version = "3" }
 
 [profile.release]
 lto = 'thin'
