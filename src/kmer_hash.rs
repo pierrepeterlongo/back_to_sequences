@@ -30,7 +30,7 @@ pub fn index_kmers<T: KmerCounter>(
     stranded: bool,
     no_low_complexity: bool,
 ) -> anyhow::Result<(HashMap<Vec<u8>, T>, usize)> {
-// ) -> anyhow::Result<(Box<dyn HashMap<Vec<u8>, T>>, usize)> {
+    // ) -> anyhow::Result<(Box<dyn HashMap<Vec<u8>, T>>, usize)> {
     let mut kmer_set = HashMap::new();
     let reverse_complement = if stranded { Some(false) } else { None };
 
@@ -51,14 +51,15 @@ pub fn index_kmers<T: KmerCounter>(
             // for mut i in 0..(acgt_sequence.len() - kmer_size + 1) {
             let kmer = &acgt_sequence[i..(i + kmer_size)];
             let first_non_acgt = first_non_acgt(kmer);
-            if first_non_acgt.0 == false {
+            if !first_non_acgt.0 {
                 // If the kmer contains a non acgt letter, we jump to the next possible kmer
                 i = i + first_non_acgt.1 + 1;
                 continue;
             } else {
                 // If the entropy is too low, the kmer is not inserted
                 if no_low_complexity && shannon_entropy(kmer) < 1.0 {
-                    i = i + 1;
+                    i += 1;
+
                     continue;
                 }
                 kmer_set.insert(
@@ -68,7 +69,7 @@ pub fn index_kmers<T: KmerCounter>(
                     Default::default(), // RelaxedCounter::new(0) // TODO call default from kmer_counter (anthony)
                 );
             }
-            i = i + 1;
+            i += 1;
         }
     }
     println!(
@@ -82,33 +83,46 @@ pub fn index_kmers<T: KmerCounter>(
 
 #[cfg(test)]
 mod tests {
+    /* std use */
+    use std::io::Write as _;
+
+    /* crate use */
+    use atomic_counter::AtomicCounter as _;
+    use biotest::values::Generate as _;
+    use biotest::Format as _;
+
+    /* project use */
     use super::*;
 
     #[test]
-    fn non_acgt() {
-        let mut rng = crate::tests::rand();
+    fn non_acgt() -> anyhow::Result<()> {
+        let mut rng = biotest::rand();
 
-        let sequence = crate::tests::sequence(&mut rng, 50).to_ascii_uppercase();
+        let sequence = biotest::values::Nucleotides::DnaUpper.generate(&mut rng, 50)?;
+        println!("{}", String::from_utf8(sequence.clone()).unwrap());
         assert_eq!((true, 0), first_non_acgt(&sequence));
 
-        let mut sequence = crate::tests::sequence(&mut rng, 10).to_ascii_uppercase();
+        let mut sequence = biotest::values::Nucleotides::DnaUpper.generate(&mut rng, 10)?;
         sequence.push(b'@');
         assert_eq!((false, 10), first_non_acgt(&sequence));
 
-        let sequence = crate::tests::sequence(&mut rng, 0).to_ascii_uppercase();
+        let sequence = biotest::values::Nucleotides::DnaUpper.generate(&mut rng, 0)?;
         assert_eq!((true, 0), first_non_acgt(&sequence));
+
+        Ok(())
     }
 
     #[test]
     fn build_index_kmers() -> anyhow::Result<()> {
-        let mut rng = crate::tests::rand();
+        let mut rng = biotest::rand();
+        let k_generate = biotest::Fasta::builder().sequence_len(16).build()?;
 
         let temp_dir = tempfile::tempdir()?;
         let temp_path = temp_dir.path();
 
         let kmers_in_path = temp_path.join("kmers_in.fasta");
 
-        crate::tests::io::write_fasta(&mut rng, 16, 5, 5, &kmers_in_path)?;
+        k_generate.create(&kmers_in_path, &mut rng, 5)?;
 
         let (index, kmer_size) = index_kmers::<atomic_counter::RelaxedCounter>(
             kmers_in_path.into_os_string().into_string().unwrap(),
@@ -124,37 +138,38 @@ mod tests {
         assert_eq!(
             keys,
             vec![
+                b"AACTTGCGACAAGAA".to_vec(),
                 b"AAGCATTACCGTGGC".to_vec(),
-                b"ACTGTGCAAAAGGGG".to_vec(),
-                b"AGACATGAGCAACCA".to_vec(),
-                b"AGGATATCGAATTAT".to_vec(),
-                b"ATGAATCGCGTGTTA".to_vec(),
+                b"ACGTTAAGAAGGTTC".to_vec(),
+                b"AGCAACCATCTATAA".to_vec(),
+                b"ATTGCAGCATGTCTC".to_vec(),
                 b"CAAGCATTACCGTGG".to_vec(),
-                b"CAGACATGAGCAACC".to_vec(),
-                b"CAGGATATCGAATTA".to_vec(),
-                b"CCCTTTTGCACAGTA".to_vec(),
-                b"CTAACACGCGATTCA".to_vec(),
+                b"CGAACCTTCTTAACG".to_vec(),
+                b"GAACTTGCGACAAGA".to_vec(),
+                b"GAGCAACCATCTATA".to_vec(),
+                b"GGAGACATGCTGCAA".to_vec(),
             ]
         );
 
-        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
+
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 
         Ok(())
     }
 
-
     #[test]
     fn build_index_kmers_stranded() -> anyhow::Result<()> {
-        let mut rng = crate::tests::rand();
+        let mut rng = biotest::rand();
+        let k_generate = biotest::Fasta::builder().sequence_len(16).build()?;
 
         let temp_dir = tempfile::tempdir()?;
         let temp_path = temp_dir.path();
 
-        let kmers_in_path = temp_path.join("kmers_in.fastq");
+        let kmers_in_path = temp_path.join("kmers_in.fasta");
 
-        crate::tests::io::write_fastq(&mut rng, 16, 5, 5, &kmers_in_path)?;
+        k_generate.create(&kmers_in_path, &mut rng, 5)?;
 
         let (index, kmer_size) = index_kmers::<atomic_counter::RelaxedCounter>(
             kmers_in_path.into_os_string().into_string().unwrap(),
@@ -170,20 +185,21 @@ mod tests {
         assert_eq!(
             keys,
             vec![
-                b"ACATGCTGCAATTAC".to_vec(),
-                b"ATCCTCTGGAACTTG".to_vec(),
-                b"ATGAATCGCGTGTTA".to_vec(),
-                b"CATCCTCTGGAACTT".to_vec(),
-                b"GACATGCTGCAATTA".to_vec(),
-                b"TGAATCGCGTGTTAG".to_vec(),
-                b"TGCTCATGTCTGCTG".to_vec(),
-                b"TGTACGCAGGATATC".to_vec(),
-                b"TTGCTCATGTCTGCT".to_vec(),
-                b"TTGTACGCAGGATAT".to_vec(),
+                b"AACTTGCGACAAGAA".to_vec(),
+                b"CCACGGTAATGCTTG".to_vec(),
+                b"CGAACCTTCTTAACG".to_vec(),
+                b"GAACCTTCTTAACGT".to_vec(),
+                b"GAACTTGCGACAAGA".to_vec(),
+                b"GAGACATGCTGCAAT".to_vec(),
+                b"GCCACGGTAATGCTT".to_vec(),
+                b"GGAGACATGCTGCAA".to_vec(),
+                b"TATAGATGGTTGCTC".to_vec(),
+                b"TTATAGATGGTTGCT".to_vec(),
             ]
         );
 
-        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
+
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 
@@ -192,20 +208,21 @@ mod tests {
 
     #[test]
     fn build_index_kmers_no_low_complexity() -> anyhow::Result<()> {
-        let mut rng = crate::tests::rand();
+        let mut rng = biotest::rand();
+        let k_generate = biotest::Fasta::builder().sequence_len(16).build()?;
 
         let temp_dir = tempfile::tempdir()?;
         let temp_path = temp_dir.path();
 
         let kmers_in_path = temp_path.join("kmers_in.fasta");
+        let mut fasta_data = vec![];
 
-        let mut fasta_data = crate::tests::fasta::records(&mut rng, 5, 16, 2);
+        k_generate.records(&mut fasta_data, &mut rng, 5)?;
         fasta_data.extend(b">read_homopolymer\n");
         fasta_data.extend([b'A'; 16]);
         fasta_data.push(b'\n');
-        fasta_data.extend(crate::tests::fasta::records(&mut rng, 5, 16, 2));
 
-        crate::tests::io::write_buffer(&fasta_data, &kmers_in_path)?;
+        std::fs::File::create(&kmers_in_path)?.write_all(&fasta_data)?;
 
         let (index, kmer_size) = index_kmers::<atomic_counter::RelaxedCounter>(
             kmers_in_path.into_os_string().into_string().unwrap(),
@@ -221,18 +238,20 @@ mod tests {
         assert_eq!(
             keys,
             vec![
+                b"AACTTGCGACAAGAA".to_vec(),
                 b"AAGCATTACCGTGGC".to_vec(),
-                b"AGACATGAGCAACCA".to_vec(),
-                b"AGGATATCGAATTAT".to_vec(),
-                b"ATGAATCGCGTGTTA".to_vec(),
+                b"ACGTTAAGAAGGTTC".to_vec(),
+                b"AGCAACCATCTATAA".to_vec(),
+                b"ATTGCAGCATGTCTC".to_vec(),
                 b"CAAGCATTACCGTGG".to_vec(),
-                b"CAGACATGAGCAACC".to_vec(),
-                b"CAGGATATCGAATTA".to_vec(),
-                b"CTAACACGCGATTCA".to_vec(),
+                b"CGAACCTTCTTAACG".to_vec(),
+                b"GAACTTGCGACAAGA".to_vec(),
+                b"GAGCAACCATCTATA".to_vec(),
+                b"GGAGACATGCTGCAA".to_vec(),
             ]
         );
 
-        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 
@@ -241,20 +260,21 @@ mod tests {
 
     #[test]
     fn not_nucleotide() -> anyhow::Result<()> {
-        let mut rng = crate::tests::rand();
+        let mut rng = biotest::rand();
+        let k_generate = biotest::Fasta::builder().sequence_len(16).build()?;
 
         let temp_dir = tempfile::tempdir()?;
         let temp_path = temp_dir.path();
 
         let kmers_in_path = temp_path.join("kmers_in.fasta");
+        let mut fasta_data = vec![];
 
-        let mut fasta_data = crate::tests::fasta::records(&mut rng, 5, 16, 2);
-        fasta_data.extend(crate::tests::fasta::record(&mut rng, 10, 16));
-        *fasta_data.last_mut().unwrap() = b'@';
-        fasta_data.extend(b"ACTG\n");
-        fasta_data.extend(crate::tests::fasta::records(&mut rng, 5, 16, 2));
+        k_generate.records(&mut fasta_data, &mut rng, 5)?;
+        k_generate.record(&mut fasta_data, &mut rng)?;
+        fasta_data.extend(b"@ACTG\n");
+        k_generate.records(&mut fasta_data, &mut rng, 5)?;
 
-        crate::tests::io::write_buffer(&fasta_data, &kmers_in_path)?;
+        std::fs::File::create(&kmers_in_path)?.write_all(&fasta_data)?;
 
         let (index, kmer_size) = index_kmers::<atomic_counter::RelaxedCounter>(
             kmers_in_path.into_os_string().into_string().unwrap(),
@@ -270,20 +290,33 @@ mod tests {
         assert_eq!(
             keys,
             vec![
+                b"AACTTGCGACAAGAA".to_vec(),
                 b"AAGCATTACCGTGGC".to_vec(),
-                b"AGCAGACATGAGCAA".to_vec(),
-                b"ATGAATCGCGTGTTA".to_vec(),
+                b"ACGTTAAGAAGGTTC".to_vec(),
+                b"AGATTTGTGCTTAAG".to_vec(),
+                b"AGCAACCATCTATAA".to_vec(),
+                b"ATGTCAGGCTAGTTC".to_vec(),
+                b"ATTGCAGCATGTCTC".to_vec(),
+                b"ATTTAAAACGGCTTG".to_vec(),
                 b"CAAGCATTACCGTGG".to_vec(),
-                b"CAGCAGACATGAGCA".to_vec(),
-                b"CTAACACGCGATTCA".to_vec(),
-                b"CTATAATTCGATATC".to_vec(),
-                b"CTCCCCTTTTGCACA".to_vec(),
-                b"CTGTGCAAAAGGGGA".to_vec(),
-                b"GGATATCGAATTATA".to_vec(),
+                b"CATTGCGCTTGAAGG".to_vec(),
+                b"CCAAGCCGTTTTAAA".to_vec(),
+                b"CCTATGCTCACTCAA".to_vec(),
+                b"CCTTAAGCACAAATC".to_vec(),
+                b"CGAACCTTCTTAACG".to_vec(),
+                b"CTATTGTAGGCGCAC".to_vec(),
+                b"CTTCAAGCGCAATGA".to_vec(),
+                b"GAACTTGCGACAAGA".to_vec(),
+                b"GAGCAACCATCTATA".to_vec(),
+                b"GGAACTAGCCTGACA".to_vec(),
+                b"GGAGACATGCTGCAA".to_vec(),
+                b"TCCTATGCTCACTCA".to_vec(),
+                b"TCTATTGTAGGCGCA".to_vec(),
             ]
         );
 
-        let mut values = index.values().map(|x| x.get_count()).collect::<Vec<usize>>();
+        let mut values = index.values().map(|x| x.get()).collect::<Vec<usize>>();
+
         values.sort_unstable();
         assert_eq!(values, vec![0usize; keys.len()]);
 

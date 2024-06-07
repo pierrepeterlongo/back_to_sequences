@@ -8,22 +8,14 @@ use std::io::{stdin, BufWriter, Write};
 
 /* crates use */
 use ahash::AHashMap as HashMap;
+use anyhow::Context as _;
 use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
 
-
-use crate::matched_sequences::MatchedSequence;
 /* project use */
-use crate::sequence_normalizer::SequenceNormalizer;
 use crate::kmer_counter::KmerCounter;
-
-// pub fn vect_u8_to_string(seq: Vec<u8>) -> String {
-//     let mut s = String::new();
-//     for c in seq {
-//         s.push(c as char);
-//     }
-//     s
-// }
+use crate::matched_sequences::MatchedSequence;
+use crate::sequence_normalizer::SequenceNormalizer;
 
 /// Reverse complement a sequence in place.
 pub fn rev_comp(seq: &mut [u8]) {
@@ -40,9 +32,9 @@ pub fn rev_comp(seq: &mut [u8]) {
     });
 }
 
-
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
 /// and output the sequence if its ratio of indexed kmers is in ]min_threshold, max_threshold]
+#[allow(clippy::too_many_arguments)]
 pub fn kmers_in_fasta_file_par<T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
@@ -53,13 +45,15 @@ pub fn kmers_in_fasta_file_par<T, D>(
     stranded: bool,
     query_reverse: bool,
     map_both_strands: bool,
-) -> Result<(), ()> 
-where T: KmerCounter, D: MatchedSequence + Send + 'static {
-    const CHUNK_SIZE: usize = 32; // number of records  
+) -> anyhow::Result<()>
+where
+    T: KmerCounter,
+    D: MatchedSequence + Send + 'static,
+{
+    const CHUNK_SIZE: usize = 32; // number of records
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
-    
-    
+
     struct Chunk<D> {
         id: usize,
         records: Vec<(usize, fxread::Record, Option<D>)>,
@@ -69,33 +63,33 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
     let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(INPUT_CHANNEL_SIZE);
     let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(OUTPUT_CHANNEL_SIZE);
 
-    let mut output_file =
-        BufWriter::new(File::create(out_fasta).map_err(|e| {
-            eprintln!("Error: failed to open the sequence file for writing: {}", e)
-        })?);
+    let mut output_file = BufWriter::new(
+        File::create(out_fasta).context("Error: failed to open the sequence file for writing")?,
+    );
 
-    let mut output_record =
-        move |(_read_id, record, matched_sequence): (usize, fxread::Record, Option<D>)| -> std::io::Result<()> {
-            let percent_shared_kmers = matched_sequence.as_ref().unwrap().percent_shared_kmers();
-            
-            if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
-                // supports the user defined thresholds
+    let mut output_record = move |(_read_id, record, matched_sequence): (
+        usize,
+        fxread::Record,
+        Option<D>,
+    )|
+          -> std::io::Result<()> {
+        let percent_shared_kmers = matched_sequence.as_ref().unwrap().percent_shared_kmers();
 
-                let record_as_string = record.as_str().trim().as_bytes();
-                let mut iter = record_as_string.split(|&x| x == b'\n');
+        if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
+            // supports the user defined thresholds
 
-                output_file.write_all(iter.next().unwrap())?; // write the original header of the record
-                writeln!(
-                    output_file,
-                    "{}", matched_sequence.as_ref().unwrap()
-                )?; // append metrics
-                for line in iter {
-                    output_file.write_all(line)?;
-                    output_file.write_all(b"\n")?;
-                }
-            } // end read contains at least one indexed kmer
-            Ok(())
-        };
+            let record_as_string = record.as_str().trim().as_bytes();
+            let mut iter = record_as_string.split(|&x| x == b'\n');
+
+            output_file.write_all(iter.next().unwrap())?; // write the original header of the record
+            writeln!(output_file, "{}", matched_sequence.as_ref().unwrap())?; // append metrics
+            for line in iter {
+                output_file.write_all(line)?;
+                output_file.write_all(b"\n")?;
+            }
+        } // end read contains at least one indexed kmer
+        Ok(())
+    };
 
     let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
         let mut reader = if file_name.is_empty() {
@@ -103,7 +97,7 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
         } else {
             initialize_reader(&file_name).unwrap()
         };
-        
+
         let mut read_id = 0;
         for id in 0.. {
             let mut vec = Vec::with_capacity(CHUNK_SIZE);
@@ -159,7 +153,7 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par::<_, D>( 
+                *nb_shared_kmers = Some(shared_kmers_par::<_, D>(
                     kmer_set,
                     record.seq(),
                     *read_id,
@@ -176,30 +170,30 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
     reader_thread
         .join()
         .unwrap()
-        .map_err(|e| eprintln!("Error reading the sequences: {}", e))?;
+        .context("Error reading the sequences")?;
     writer_thread
         .join()
         .unwrap()
-        .map_err(|e| eprintln!("Error writing the sequences: {}", e))
+        .context("Error writing the sequences")
 }
 
-
-
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
-pub fn only_kmers_in_fasta_file_par <T, D>(
+pub fn only_kmers_in_fasta_file_par<T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
-) 
-where T: KmerCounter, D: MatchedSequence + Send + 'static {
+) -> anyhow::Result<()>
+where
+    T: KmerCounter,
+    D: MatchedSequence + Send + 'static,
+{
     const CHUNK_SIZE: usize = 32; // number of records
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
     struct Chunk<D> {
-        id: usize,
         records: Vec<(usize, fxread::Record, Option<D>)>,
         // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
     }
@@ -213,8 +207,9 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
         } else {
             initialize_reader(&file_name).unwrap()
         };
-        let mut read_id=0;  
-        for id in 0.. {
+
+        let mut read_id = 0;
+        for _ in 0.. {
             let mut vec = Vec::with_capacity(CHUNK_SIZE);
             for _ in 0..CHUNK_SIZE {
                 match reader.next_record()? {
@@ -223,14 +218,15 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
                 }
                 read_id += 1;
             }
-            if vec.is_empty() || input_tx.send(Chunk {id, records: vec }).is_err() {
+
+            if vec.is_empty() || input_tx.send(Chunk { records: vec }).is_err() {
                 return Ok(());
             }
         }
         unreachable!()
     });
 
-    let _ = input_rx
+    input_rx
         .into_iter()
         .par_bridge()
         .for_each(move |mut chunk| {
@@ -250,10 +246,10 @@ where T: KmerCounter, D: MatchedSequence + Send + 'static {
             }
         });
 
-        let _ = reader_thread
-                .join()
-                .unwrap()
-                .map_err(|e| eprintln!("Error reading the sequences: {}", e));
+    reader_thread
+        .join()
+        .unwrap()
+        .context("Error reading the sequences")
 }
 
 /// count the number of indexed kmers in a given read
@@ -264,19 +260,21 @@ pub fn shared_kmers_par<C, D>(
     kmer_size: usize,
     stranded: bool,
     map_both_strands: bool,
-) -> D 
-where C: KmerCounter, D: MatchedSequence + Sized
-    {
-    let mut result = D::new(read.len() - kmer_size + 1);
+) -> D
+where
+    C: KmerCounter,
+    D: MatchedSequence + Sized,
+{
     if read.len() < kmer_size {
-        return result;
+        return D::new(0);
     }
+    let mut result = D::new(read.len() - kmer_size + 1);
     let reverse_complement = if stranded { Some(false) } else { None };
-    
 
     let mut buf = [0].repeat(kmer_size);
 
-    if ! map_both_strands { // if we do not map both strands, we only map the kmer or its reverse complement
+    if !map_both_strands {
+        // if we do not map both strands, we only map the kmer or its reverse complement
         let canonical_kmer = buf.as_mut_slice();
 
         for i in 0..(read.len() - kmer_size + 1) {
@@ -285,83 +283,172 @@ where C: KmerCounter, D: MatchedSequence + Sized
             sequence_normalizer.copy_to_slice(canonical_kmer);
             if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
                 result.add_match(i, sequence_normalizer.is_raw());
-                kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: (sequence_normalizer.is_raw()) });
+                kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                    id_read: (read_id),
+                    position: (i),
+                    forward: (sequence_normalizer.is_raw()),
+                });
             }
         }
-        return result;
-    }
-    else { // if we map both strands, we map the kmer and its reverse complement
+        result
+    } else {
+        // if we map both strands, we map the kmer and its reverse complement
         // Note that if --stranded is not set, the mapping is always detected in forward strand
+        let normalizer_kmer = buf.as_mut_slice();
+
         for i in 0..(read.len() - kmer_size + 1) {
-            let mut kmer = Vec::from(&read[i..(i + kmer_size)]);
-            // println!("kmer {:?} pos {:?}", vect_u8_to_string(kmer.clone()), i);
-            if let Some(kmer_counter) = kmer_set.get(&kmer) {
+            let kmer = &read[i..(i + kmer_size)];
+            let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
+            sequence_normalizer.copy_to_slice(normalizer_kmer);
+
+            if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
                 result.add_match(i, true);
-                kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: true });
-                // println!("added forward pos {:?}", i);
-            }
-            else { // forward did not match, we try the reverse one
-                rev_comp(&mut kmer);
-                // println!("rc kmer {:?} pos {:?}", vect_u8_to_string(kmer.clone()), i);
-                if let Some(kmer_counter) = kmer_set.get(&kmer) {
+                kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                    id_read: (read_id),
+                    position: (i),
+                    forward: true,
+                });
+            } else {
+                // forward did not match, we try the reverse one
+                rev_comp(normalizer_kmer);
+                if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
                     result.add_match(i, false);
-                    kmer_counter.add_match(crate::kmer_counter::KmerMatch { id_read: (read_id), position: (i), forward: false });
-                    // println!("added revcomp pos {:?} {:?}", i, vect_u8_to_string(kmer));
+                    kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                        id_read: (read_id),
+                        position: (i),
+                        forward: false,
+                    });
                 }
             }
         }
-        return result;
+        result
     }
 }
 
 #[cfg(test)]
 mod tests {
+    /* crate use */
+    use biotest::Format as _;
+
+    /* project use */
+    use super::*;
     use crate::matched_sequences;
 
-    use super::*;
-
     #[test]
-    fn test_rev_comp() -> anyhow::Result<()> {
+    fn test_rev_comp() {
         let mut seq = b"AAACC".to_vec();
         rev_comp(&mut seq);
         assert_eq!(seq, b"GGTTT".to_vec());
-        Ok(())
     }
-
-
 
     #[test]
     fn shared_kmers() -> anyhow::Result<()> {
-        let mut rng = crate::tests::rand();
+        let kmer_size = 15;
+        let seq_len = 150;
+
+        let mut rng = biotest::rand();
+        let s_generator = biotest::Sequence::builder().sequence_len(seq_len).build()?;
+        let k_generator = biotest::Fasta::builder().sequence_len(kmer_size).build()?;
+
+        let mut sequence = vec![];
+        s_generator.record(&mut sequence, &mut rng)?;
+
+        let mut data = vec![];
+        k_generator.records(&mut data, &mut rng, 100)?;
+        data.extend(b">sequence\n");
+        data.extend(&sequence);
 
         let temp_dir = tempfile::tempdir()?;
         let temp_path = temp_dir.path();
-
         let kmers_in_path = temp_path.join("kmers_in.fasta");
-        let kmer_size = 42;
-        let sequence = crate::tests::sequence(&mut rng, 16);
-        let mut data = crate::tests::fasta::records(&mut rng, 5, 16, 5);
-        data.extend(b">read_test\n");
-        data.extend(sequence.clone());
 
-        crate::tests::io::write_buffer(&data, &kmers_in_path)?;
+        std::fs::File::create(&kmers_in_path)?.write_all(&data)?;
 
-        let (kmer_set, _) = crate::kmer_hash::index_kmers::<atomic_counter::RelaxedCounter>(
-            kmers_in_path.into_os_string().into_string().unwrap(),
-            5,
+        let (kmer_set_cano, _) = crate::kmer_hash::index_kmers::<atomic_counter::RelaxedCounter>(
+            kmers_in_path.display().to_string(),
+            kmer_size,
             false,
             false,
         )?;
 
-        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &sequence, 42, kmer_size, false, false).count, 11);
+        assert_eq!(
+            shared_kmers_par::<_, matched_sequences::MachedCount>(
+                &kmer_set_cano,
+                &sequence,
+                42,
+                kmer_size,
+                false,
+                false
+            )
+            .count,
+            135
+        );
 
-        let random_sequence = crate::tests::sequence(&mut rng, 16);
+        let mut random_sequence = vec![];
+        s_generator.record(&mut random_sequence, &mut rng)?;
 
-        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &random_sequence, 42, kmer_size, false, false).count, 1);
+        assert_eq!(
+            shared_kmers_par::<_, matched_sequences::MachedCount>(
+                &kmer_set_cano,
+                &random_sequence,
+                42,
+                kmer_size,
+                false,
+                false
+            )
+            .count,
+            0
+        );
 
-        let small_sequence = crate::tests::sequence(&mut rng, 4);
+        let to_small_sequence = random_sequence[10..20].to_vec();
 
-        assert_eq!(shared_kmers_par::<_, matched_sequences::MachedCount>(&kmer_set, &small_sequence, 42, kmer_size, false, false).count, 0);
+        assert_eq!(
+            shared_kmers_par::<_, matched_sequences::MachedCount>(
+                &kmer_set_cano,
+                &to_small_sequence,
+                42,
+                kmer_size,
+                false,
+                false
+            )
+            .count,
+            0
+        );
+
+        let (kmer_set_both, _) = crate::kmer_hash::index_kmers::<atomic_counter::RelaxedCounter>(
+            kmers_in_path.display().to_string(),
+            kmer_size,
+            false,
+            true,
+        )?;
+
+        assert_eq!(
+            shared_kmers_par::<_, matched_sequences::MachedCount>(
+                &kmer_set_both,
+                &sequence,
+                42,
+                kmer_size,
+                false,
+                true
+            )
+            .count,
+            135
+        );
+
+        rev_comp(&mut sequence);
+
+        assert_eq!(
+            shared_kmers_par::<_, matched_sequences::MachedCount>(
+                &kmer_set_both,
+                &sequence,
+                42,
+                kmer_size,
+                true,
+                true
+            )
+            .count,
+            135
+        );
 
         Ok(())
     }
