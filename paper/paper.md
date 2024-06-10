@@ -309,7 +309,7 @@ applications, such as quality control, contamination removal, or
 genotyping known pieces of sequences in raw sequencing datasets, all of
 which being possible in real time throughout the sequencing process.
 
-# Acknowledgements {#acknowledgements .unnumbered}
+# Acknowledgements
 
 We acknowledge the GenOuest core facility (<https://www.genouest.org>)
 for providing the computing infrastructure. The work was funded by ANR
