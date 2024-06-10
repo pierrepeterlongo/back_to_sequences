@@ -17,7 +17,7 @@ authors:
 affiliations:
  - name: Univ. Rennes, Inria, CNRS, IRISA - UMR 6074, Rennes, F-35000 France
    index: 1
- - name: Laboratoire Multisites SeqOIA, Paris, France
+ - name: Laboratoire de Biologie Médicale Multisites SeqOIA, Paris, France
    index: 2
 date: 10 June 2024
 bibliography: paper.bib 
