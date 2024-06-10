@@ -61,10 +61,10 @@ approach [@li2012comparison].
 
 Recall that in the dBG assembly approach, 1. all $k$-mers(words of
 length $k$) from a set of reads are counted; 2. those with an abundance
-lower than a threshold are considered as containing sequencing errors
+lower than a threshold are considered to contain sequencing errors
 and are discarded; 3. the remaining $k$-mers are organized in a dBG; 4.
 the paths of the dBG form the basis of the assembly, later improved
-thanks to scaffolding tools [@huson2002greedy] such as tools provided,
+thanks to scaffolding tools [@huson2002greedy] such as the tools provided,
 for instance, by the Spades assembler [@bankevich2012spades].
 
 The usefulness of $k$-mers did not end with their use in dBGs. A large
@@ -79,7 +79,7 @@ estimation [@zhang2014rna], or for variant
 discovery [@uricaru2015reference] to cite only a few.
 
 One of the keys to the success of the use of $k$-mers is its low
-resource needs. In fact, whatever the sequencing coverage, once
+resource needs. Whatever the sequencing coverage, once
 filtered, the number of distinct $k$-mers is at most equal to the
 original genome size. This offers a minimal impact on RAM and/or disk
 needs. However, this comes at the cost of losing the link between each
@@ -88,7 +88,7 @@ explicitly these links would reintroduce the problem associated with the
 abundance of original reads, as the link between each original read and
 each of its $k$-mers would have to be stored. For instance, considering
 $k$-mers from a sequencing experiment of a human genome ($\approx 3$
-billions nuceotides) with a coverage of 50x (each $k$-mer occurs in
+billions nucleotides) with a coverage of 50x (each $k$-mer occurs on
 average in 50 distinct reads) would require more than 2Tb of space
 considering 64 bits for storing each link and 64 bits for storing the
 associated read identifier. This is not acceptable.
@@ -104,7 +104,7 @@ removal [@gonzalez2023akmerbroom] for instance.
 
 Finding back the link between a $k$-mer and each original read in which
 it occurs can be performed by indexing the reads [@marchet2020resource]
-which hardly scales hundreds of million reads. One may also apply
+which hardly scales hundreds of millions reads. One may also apply
 *grep-like* evolved pattern matching approaches such as `pt` [@pt].
 However, even if they were highly optimized in recent decades, these
 approaches cannot efficiently detect thousands of $k$-mers in millions
@@ -130,7 +130,7 @@ maximal percent of $k$-mers shared with the indexed set. To the best of
 our knowledge, there exists no other tool dedicated to this specific
 task.
 
-In the general case, the DNA sequence orientation in unknown. DNA can be
+In the general case, the DNA sequence orientation is unknown. DNA can be
 sequenced either in one strand (eg $AAGGC$) or in the reverse complement
 strand, read from right to left and commutating $A$ with $T$, and $C$
 with $G$ (eg $GCCTT$). This is why $k$-mers from $\mathcal{S}$ and
@@ -162,8 +162,8 @@ existence of $k$-mers indexed in $\mathcal{K}$. The performances are
 provided Table [1](#tab:res_bench){reference-type="ref"
 reference="tab:res_bench"}. Presented results were obtained on the
 GenOuest platform on a node with 32 threads Xeon 2.2 GHz, on a
-MacBook, Apple M2 pro, 16 GB RAM with 10 threads and on an AMD Ryzen
-7 4.2 GHz 5800X 64 GB RAM, respectively denoted by "Time GenOuest",
+MacBook, Apple M2 pro, 16 GB RAM with 10 threads, and an AMD Ryzen
+7 4.2 GHz 5800X 64 GB RAM with 16 threads, respectively denoted by "Time GenOuest",
  "Time mac" and "Time AMD" in this table. These results highlight
 the scalability of the `back_to_sequences` tool, able to search a
 million of $k$-mers in hundreds of millions of reads on a laptop
@@ -180,7 +180,7 @@ computer in a matter of dozens of minutes with negligible RAM usage.
         200,000,000      1m32          1m52       1m44     0.13 GB
 
   : The `back_to_sequences` performances searching one millions $k$-mers
-  in 10 thousands to 100 million reads. Tested version: 2.6.0.
+  in 10 thousand to 100 million reads. Tested version: 2.6.0.
 :::
 
 
@@ -204,7 +204,7 @@ reference="tab:res_bench"} querying 100 million random reads. Using
 contained in its first read. On the GenOuest node, `back_to_sequences`
 enabled to retrieve all reads that contain at least one of the indexed
 $k$-mers in 5m17 with negligible RAM usage of 45MB. As expected, these
-scaling results are in line with results presented
+scaling results are in line with the results presented
 Table [1](#tab:res_bench){reference-type="ref"
 reference="tab:res_bench"}.
 
@@ -225,7 +225,7 @@ file. However, they do not offer the feature to extract reads that
 contain any reference $k$-mer.
 
 Finding one unique $k$-mer of interest in a set of sequences can be done
-using the classical `grep` or more recent pattern matching tools such as
+using the classical `grep` or more recent pattern-matching tools such as
 "*The Platinum Searcher*" [@pt] or "*The Silver Searcher*" [@ag].
 
 As for testing, on the MacBook, Apple M2 pro, we queried one $k$-mer in
@@ -248,19 +248,19 @@ and *The Silver Searcher*.
 Summing up, these alternative tools are not meant for querying numerous
 patterns at the same time and do not scale to large problem instances.
 
-Note also that these alternative tools are not specialized to genomic
+Note also that these alternative tools are not specialized for genomic
 data in which one is interested in searching for a $k$-mer and
 potentially its reverse complement. Finally, these tools do not easily
 provide the number of occurrences or occurrence positions of each of the
-searched patterns when they are many.
+searched patterns when there are many.
 
 # Method and features
 
 `back_to_sequences` is written in `rust`. It uses the native HashMap for storing the searched $k$-mer set,
 with alternative aHash [@zhao2020ahash] hash function.
 Depending on the user choice, the original or the canonical version of
-each $k$-mer from the "reference-$k$-mers" set is indexed. Source code
-is unit-tested and functionally tested using tools from the rust community.
+each $k$-mer from the "reference-$k$-mers" set is indexed. The source code
+is unit-tested and functionally tested using tools from the Rust community.
 
 At query time, given a sequence $s$ from $\mathcal{S}$, all its $k$-mers
 are extracted and queried. Depending on the user's choice, the canonical
@@ -285,7 +285,7 @@ $k$-mers, the maximal threshold offers for instance a way to remove
 contaminated sequences.
 
 The sequences to be queried can be provided as a fasta or fastq file
-(gzipped or not). They can also be be read directly from the standard
+(gzipped or not). They can also be read directly from the standard
 input (*stdin*). This offers the may to stream sequences as they arrive,
 for instance when they are obtained during an Oxford Nanopore sequencing
 process.
@@ -302,7 +302,7 @@ counting their number of occurrences in a set of genomic sequences. We
 also believe that `back_to_sequences` will have other straightforward
 applications, such as quality control, contamination removal, or
 genotyping known pieces of sequences in raw sequencing datasets, all of
-which being possible in real-time throughout the sequencing process.
+which being possible in real time throughout the sequencing process.
 
 # Acknowledgements {#acknowledgements .unnumbered}
 
