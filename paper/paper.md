@@ -1,27 +1,28 @@
 ---
-title: "Back to sequences: find the origin of $k$-mers"
+title: 'Back to sequences: find the origin of $k$-mers'
 tags:
   - rust
   - kmer
   - indexing
   - genomic sequencing data
 authors:
-  - name: Anthony Baire 
+  - name: Anthony Baire
     affiliation: 1
   - name: Pierre Marijon 
     orcid: 0000-0002-6694-6873
     affiliation: 2
   - name: Pierre Peterlongo 
-    orcid: 
+    orcid: 0000-0003-0776-6407
     affiliation: 1
 affiliations:
  - name: Univ. Rennes, Inria, CNRS, IRISA - UMR 6074, Rennes, F-35000 France
    index: 1
- - name: PM AFFILIALTION xxx
+ - name: Laboratoire Multisites SeqOIA, Paris, France
    index: 2
 date: 10 June 2024
 bibliography: paper.bib 
-availability: github.com/pierrepeterlongo/back_to_sequences
+
+
 ---
 
 # Abstract
@@ -41,6 +42,8 @@ A vast majority of bioinformatics tools dedicated to the treatment of
   streams $\approx200$ short read per millisecond, allowing to search
   $k$-mers in hundreds of millions of reads in a matter of a few
   minutes.
+
+  Availability: github.com/pierrepeterlongo/back_to_sequences
 
 # Introduction
 
