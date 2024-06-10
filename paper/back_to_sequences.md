@@ -208,8 +208,8 @@ searched patterns when they are many.
 
 # Method and features
 
-`back_to_sequences` is written in `rust`. It uses the native HashMap,
-with AHash [@zhao2020ahash] Hasher for storing the searched $k$-mer set.
+`back_to_sequences` is written in `rust`. It uses the native HashMap for storing the searched $k$-mer set,
+with alternative aHash [@zhao2020ahash] hash function.
 Depending on the user choice, the original or the canonical version of
 each $k$-mer from the "reference-$k$-mers" set is indexed. Source code
 is unit-tested and functionally tested using tools from the rust community.
