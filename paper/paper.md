@@ -11,6 +11,9 @@ authors:
   - name: Pierre Marijon 
     orcid: 0000-0002-6694-6873
     affiliation: 2
+  - name: Francesco Andreace
+    orcid: 0009-0008-0566-200X
+    affiliation: 3
   - name: Pierre Peterlongo 
     orcid: 0000-0003-0776-6407
     affiliation: 1
@@ -19,6 +22,8 @@ affiliations:
    index: 1
  - name: Laboratoire de Biologie Médicale Multisites SeqOIA, Paris, France
    index: 2
+ - name: Department of Computational Biology, Institut Pasteur, Université Paris Cité, Paris, F-75015, France
+   index: 3
 date: 10 June 2024
 bibliography: paper.bib 
 
