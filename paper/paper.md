@@ -115,7 +115,7 @@ existence of $k$-mers indexed in $\mathcal{K}$. The performances are
 provided Table [1](#tab:res_bench){reference-type="ref"
 reference="tab:res_bench"}. Presented results were obtained on the
 GenOuest platform on a node with 32 threads Xeon 2.2 GHz, on a
-MacBook, Apple M2 pro, 16 GB RAM with 10 threads and on a AMD Ryzen
+MacBook, Apple M2 pro, 16 GB RAM with 10 threads and on an AMD Ryzen
 7 4.2 GHz 5800X 64 GB RAM, respectively denoted by "Time GenOuest",
  "Time mac" and "Time AMD" in this table. These results highlight
 the scalability of the `back_to_sequences` tool, able to search a
@@ -125,16 +125,17 @@ computer in a matter of dozens of minutes with negligible RAM usage.
 ::: {#tab:res_bench}
     Number of reads  Time GenOuest   Time mac   Time AMD   max RAM
   ----------------- --------------- ---------- ---------- ---------
-             10,000      0.7s          0.6s       0.4s     0.13 GB
-            100,000      0.7s          1.4s       1.2s     0.13 GB
-          1,000,000      3.1s          8.3s       7,1s     0.13 GB
-         10,000,000      8.9s          39s        16s      0.13 GB
-        100,000,000      52s6          6m04       48s      0.13 GB
-        200,000,000      1m41         12m57       1m44     0.13 GB
+             10,000      0.7s          0.5s       0.4s     0.13 GB
+            100,000      0.8s          0.8s       1.2s     0.13 GB
+          1,000,000      2.0s          3.5s       7,1s     0.13 GB
+         10,000,000      7.1s          11s        16s      0.13 GB
+        100,000,000      47s          58s       48s      0.13 GB
+        200,000,000      1m32         1m52       1m44     0.13 GB
 
   : The `back_to_sequences` performances searching one millions $k$-mers
   in 10 thousands to 100 million reads. Tested version: 2.6.0.
 :::
+
 
 ## Benchmark on *Tara* ocean seawater metagenomic data
 
