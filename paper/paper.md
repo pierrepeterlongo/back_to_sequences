@@ -1,6 +1,31 @@
 ---
-abstract: |
-  A vast majority of bioinformatics tools dedicated to the treatment of
+title: "Back to sequences: find the origin of $k$-mers"
+tags:
+  - rust
+  - kmer
+  - indexing
+  - genomic sequencing data
+authors:
+  - name: Anthony Baire 
+    affiliation: 1
+  - name: Pierre Marijon 
+    orcid: 0000-0002-6694-6873
+    affiliation: 2
+  - name: Pierre Peterlongo 
+    orcid: 
+    affiliation: 1
+affiliations:
+ - name: Univ. Rennes, Inria, CNRS, IRISA - UMR 6074, Rennes, F-35000 France
+   index: 1
+ - name: PM AFFILIALTION xxx
+   index: 2
+date: 10 June 2024
+bibliography: paper.bib 
+availability: github.com/pierrepeterlongo/back_to_sequences
+---
+
+# Abstract
+A vast majority of bioinformatics tools dedicated to the treatment of
   raw sequencing data heavily use the concept of $k$-mers, which are
   words of length $k$. This enables us to reduce the redundancy of data
   (and thus the memory pressure), to discard sequencing errors, and to
@@ -16,17 +41,6 @@ abstract: |
   streams $\approx200$ short read per millisecond, allowing to search
   $k$-mers in hundreds of millions of reads in a matter of a few
   minutes.
-
-  **Availability:**
-  [github.com/pierrepeterlongo/back_to_sequences](github.com/pierrepeterlongo/back_to_sequences){.uri}
-author:
-- Anthony Baire
-- Pierre Marijon
-- Pierre Peterlongo
-bibliography:
-- paper.bib
-title: "Back to sequences: find the origin of $k$-mers"
----
 
 # Introduction
 
