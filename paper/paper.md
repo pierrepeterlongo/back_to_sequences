@@ -50,7 +50,7 @@ A vast majority of bioinformatics tools dedicated to the treatment of
 
   Availability: github.com/pierrepeterlongo/back_to_sequences
 
-# Introduction
+# Statement of need
 
 In the 2010s, following the emergence of next-generation sequencing
 technology, read assembly strategies based on the
