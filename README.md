@@ -42,6 +42,8 @@ In this case 20 kmers are shared with the indexed kmers. This represents 6.13% o
 }
 ```
 
+The paper is submitted to [JOSS](https://joss.theoj.org/), which generated the following [pdf](https://github.com/openjournals/joss-papers/blob/joss.06872/joss.06872/10.21105.joss.06872.pdf).
+
 ##  3. <a name='Install'></a>Install
 
 ```bash
