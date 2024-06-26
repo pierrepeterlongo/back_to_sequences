@@ -113,7 +113,7 @@ pub fn validate_non_empty_file(in_file: String) -> anyhow::Result<()> {
             anyhow::bail!("{:#} exists, but it's not a file.", in_file)
         }
     } else {
-        anyhow::bail!("{:#} exists, but it's not a file.", in_file)
+        anyhow::bail!("{:#} is not a file.", in_file)
     }
 
     Ok(())

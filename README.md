@@ -195,7 +195,7 @@ Say you have three input read files `1.fa`, `2.fa`, `3.fa` to which you wish to 
 1. create an input and an output files:
 ```bash
 ls 1.fa 2.fa 3.fa > in.fof
-echo 1_out.fa 2_out.fa 3_out.fa > out.fof
+echo "1_out.fa\n2_out.fa\n3_out.fa" > out.fof
 ```
 2. run `back_to_sequences`
 ```bash

@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
     env::set_var("RAYON_NUM_THREADS", args.threads.to_string());
 
     // If out_sequences and out_kmers are not provided, we do nothing, we can quit
-    if args.out_sequences.is_empty() && args.out_kmers.is_empty() {
+    if args.out_sequences.is_empty() && args.out_filelist.is_empty() && args.out_kmers.is_empty() {
         anyhow::bail!("no output file provided, nothing to do");
     }
 

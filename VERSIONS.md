@@ -50,4 +50,6 @@
     * Fixed a filtering bug: As percentage of shared kmers were rounded to 2 decimals, and as we exclude the min-threshold value, 
     some reads with shared kmers were discarded while 
     they contained shared kmers. Now the tset is made before to round values + output values are rounded to 5 decimals.
+* 0.6.6 26/06/2024
+    * Corrected a bug related to the usage of --in-filelist when querying multiple input files
     
