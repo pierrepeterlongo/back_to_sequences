@@ -1,5 +1,7 @@
 # Back to sequences
 
+![tests](https://github.com/pierrepeterlongo/back_to_sequences/workflows/tests/badge.svg)
+![lints](https://github.com/pierrepeterlongo/back_to_sequences/workflows/lints/badge.svg)
 [![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
 
 
@@ -26,7 +28,3 @@ As the --out-kmers option is used, the file `counted_kmers.txt` contains for eac
 
 ## Documentation
 **Full documentation** is available at [https://b2s-doc.readthedocs.io/en/latest/](https://b2s-doc.readthedocs.io/en/latest/)
-
-
-
-
