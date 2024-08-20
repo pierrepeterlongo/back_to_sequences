@@ -62,7 +62,7 @@ unknown sequencing strand) were complex to handle with OLC while being
 easy to handle or simply solved with the dBG
 approach [@li2012comparison].
 
-Recall that in the dBG assembly approach, 1. all $k$-mers(words of
+Recall that in the dBG assembly approach, 1. all $k$-mers (words of
 length $k$) from a set of reads are counted; 2. those with an abundance
 lower than a threshold are considered to contain sequencing errors
 and are discarded; 3. the remaining $k$-mers are organized in a dBG; 4.
