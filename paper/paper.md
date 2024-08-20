@@ -87,7 +87,7 @@ filtered, the number of distinct $k$-mers is at most equal to the
 original genome size. This offers a minimal impact on random access memory
 (RAM) and/or disk needs. However, this comes at the cost of losing the link
 between each $k$-mer and the sequence(s) from which it originates. Storing
-explicitly these links would reintroduce the problem associated with the
+these links explicitly would reintroduce the problem associated with the
 abundance of original reads, as the link between each original read and
 each of its $k$-mers would have to be stored. For instance, considering
 $k$-mers from a sequencing experiment of a human genome ($\approx 3$
