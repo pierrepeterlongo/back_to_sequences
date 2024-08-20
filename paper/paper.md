@@ -91,7 +91,7 @@ these links explicitly would reintroduce the problem associated with the
 abundance of original reads, as the link between each original read and
 each of its $k$-mers would have to be stored. For instance, considering
 $k$-mers from a sequencing experiment of a human genome ($\approx 3$
-billions nucleotides) with a coverage of 50x (each $k$-mer occurs on
+billion nucleotides) with a coverage of 50x (each $k$-mer occurs on
 average in 50 distinct reads) would require more than 2Tb of space
 considering 64 bits for storing each link and 64 bits for storing the
 associated read identifier. This is not acceptable.
