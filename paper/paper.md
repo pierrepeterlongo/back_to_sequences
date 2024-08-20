@@ -181,3 +181,5 @@ SeqDigger (ANR-19-CE45-0008), and by the Inria Challenge "OmicFinder"
 (<https://project.inria.fr/omicfinder/>).
 
 [^1]: <http://www.ebi.ac.uk/ena/data/view/ERS488262>
+
+# References
