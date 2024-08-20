@@ -121,7 +121,7 @@ reads), those that contain some of the $k$-mers from a set $\mathcal{K}$
 given as input. The occurrences of $k$-mers in each sequence of the
 queried set $\mathcal{S}$ can also be output.
 
-## Possible alternatives
+# Possible Alternatives
 
 To the best of our knowledge, there exists no tool specifically
 dedicated to this task, while indexing the set of $k$-mers$\mathcal{K}$.
