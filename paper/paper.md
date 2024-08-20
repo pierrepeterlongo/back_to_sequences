@@ -48,7 +48,7 @@ A vast majority of bioinformatics tools dedicated to the treatment of
   $k$-mers in hundreds of millions of reads in a matter of a few
   minutes.
 
-# Statement of need
+# Statement of Need
 
 In the 2010s, following the emergence of next-generation sequencing
 technology, read assembly strategies based on the
