@@ -119,102 +119,7 @@ In this context, we propose `back_to_sequences`, a tool specifically
 dedicated to extracting from $\mathcal{S}$, a set of sequences (eg.
 reads), those that contain some of the $k$-mers from a set $\mathcal{K}$
 given as input. The occurrences of $k$-mers in each sequence of the
-queried set $\mathcal{S}$ can also be output. In addition to this
-fundamental task, additional features are described in the following.
-
-# Results
-
-The tool we introduce, `back_to_sequences`, uses the native `rust` data
-structures to index and query $k$-mers. Its advantages are 1. its
-simplicity (install and run); 2. its low RAM usage; 3. its fast running
-time; 4. its additional features adapted to $k$-mers: control of their
-orientation (see below) and sequence filtration based on the minimal and
-maximal percent of $k$-mers shared with the indexed set. To the best of
-our knowledge, there exists no other tool dedicated to this specific
-task.
-
-In the general case, the DNA sequence orientation is unknown. DNA can be
-sequenced either in one strand (eg $AAGGC$) or in the reverse complement
-strand, read from right to left and commutating $A$ with $T$, and $C$
-with $G$ (eg $GCCTT$). This is why $k$-mers from $\mathcal{S}$ and
-$\mathcal{K}$ can be considered either as original or as *canonical*,
-the smallest alphabetical word between the $k$-mer and its reverse
-complement.
-
-We propose a simple performance benchmark to assess the
-`back_to_sequences` scaling performances on random sequences and on real
-metagenomic data.
-
-## Benchmark on random sequences {#ssec:random_banch}
-
-We generated a random sequence $s$ on the alphabet $\{A,C,G,T\}$ of size
-100 million base pairs. From this sequence $s$, we randomly extracted
-50,000 sub-sequences each of size 50. We consider these sequences as
-containing the set $\mathcal{K}$ of $k$-mers to be searched. As we used
-$k=31$, each subsequence contains $50-31+1 = 20 kmers$. Doing so, we
-consider a set of at most $50000\times 20 = 1,000,000$ $k$-mers.
-
-We also generated six sets:
-$\{\mathcal{S}_{10k}, \mathcal{S}_{100k}, \mathcal{S}_{1M}, \mathcal{S}_{10M}, \mathcal{S}_{100M},  \mathcal{S}_{200M}\}$,
-composed respectively of 10 thousand, 100 thousand, one million, 10
-million, 100 million, and 200 million sequences, each of length 100
-nucleotides. Each sequence is randomly sampled from $s$.
-
-In each sequence of each set $\mathcal{S}_i$, we searched for the
-existence of $k$-mers indexed in $\mathcal{K}$. The performances are
-provided Table [1](#tab:res_bench){reference-type="ref"
-reference="tab:res_bench"}. Presented results were obtained on the
-GenOuest platform on a node with 32 threads Xeon 2.2 GHz, on a
-MacBook, Apple M2 pro, 16 GB RAM with 10 threads, and an AMD Ryzen
-7 4.2 GHz 5800X 64 GB RAM with 16 threads, respectively denoted by "Time GenOuest",
- "Time mac" and "Time AMD" in this table. These results highlight
-the scalability of the `back_to_sequences` tool, able to search a
-million of $k$-mers in hundreds of millions of reads on a laptop
-computer in a matter of dozens of minutes with negligible RAM usage.
-
-::: {#tab:res_bench}
-    Number of reads  Time GenOuest   Time mac   Time AMD   max RAM
-  ----------------- --------------- ---------- ---------- ---------
-             10,000      0.7s          0.5s       0.4s     0.13 GB
-            100,000      0.8s          0.8s       1.2s     0.13 GB
-          1,000,000      2.0s          3.5s       7,1s     0.13 GB
-         10,000,000      7.1s          11s        16s      0.13 GB
-        100,000,000      47s           58s        48s      0.13 GB
-        200,000,000      1m32          1m52       1m44     0.13 GB
-
-  : The `back_to_sequences` performances searching one millions $k$-mers
-  in 10 thousand to 100 million reads. Tested version: 2.6.0.
-:::
-
-
-## Benchmark on *Tara* ocean seawater metagenomic data
-
-The previously proposed benchmark shows the scalability of the proposed
-approach. Although performed on random sequences, there is no objective
-reason why performance should differ on real data, regardless of the
-number of $k$-mers actually detected in the data. We verify this claim
-by applying `back_to_sequences` to real complex metagenomic sequencing
-data from the *Tara* ocean project [@Sunagawa2020improved].
-
-We downloaded one of the *Tara* ocean read sets: station number 11
-corresponding to a surface Mediterranean sample, downloaded from the
-European Nucleotide Archive, identifier ERS488262[^1]. We extracted the
-first 100 million reads, which are all of length 100. Doing so, this
-test is comparable to the result presented
-Table [1](#tab:res_bench){reference-type="ref"
-reference="tab:res_bench"} querying 100 million random reads. Using
-`back_to_sequences` we searched in these reads each of the 69 31-mers
-contained in its first read. On the GenOuest node, `back_to_sequences`
-enabled to retrieve all reads that contain at least one of the indexed
-$k$-mers in 5m17 with negligible RAM usage of 45MB. As expected, these
-scaling results are in line with the results presented
-Table [1](#tab:res_bench){reference-type="ref"
-reference="tab:res_bench"}.
-
-Out of curiosity, we ran `back_to_sequences` on the full read set,
-composed of $\approx 26.3$ billion $k$-mers, and 381 million reads,
-again for searching the 69 $k$-mers contained in its first read. This
-operation took 20m11.
+queried set $\mathcal{S}$ can also be output.
 
 ## Possible alternatives
 
@@ -256,45 +161,6 @@ data in which one is interested in searching for a $k$-mer and
 potentially its reverse complement. Finally, these tools do not easily
 provide the number of occurrences or occurrence positions of each of the
 searched patterns when there are many.
-
-# Method and features
-
-`back_to_sequences` is written in `rust`. It uses the native HashMap for storing the searched $k$-mer set,
-with alternative aHash [@zhao2020ahash] hash function.
-Depending on the user choice, the original or the canonical version of
-each $k$-mer from the "reference-$k$-mers" set is indexed. The source code
-is unit-tested and functionally tested using tools from the Rust community.
-
-At query time, given a sequence $s$ from $\mathcal{S}$, all its $k$-mers
-are extracted and queried. Depending on the user's choice, the canonical
-or the original representation of each $k$-mer from the reference set is
-indexed. Again, depending on the user's choice, for each queried
-$k$-mer, the original version, its reverse complement, or its canonical
-representation is queried. If the queried $k$-mer belongs to the index,
-its number of occurrences is increased. The number of $k$-mers extracted
-from the sequence $s$ that have a match with the index is output
-together with the original sequence. As an option, in addition to only
-counting the number of occurrences of each $k$-mer from $\mathcal{K}$ in
-$\mathcal{S}$, `back_to_sequences` enables to also record their
-occurrence positions and orientation and to output this information.
-Sequences are queried in parallel.
-
-A minimal and a maximal threshold can be fixed by the user. A queried
-sequence is output only if its percentage of $k$-mers that belong to the
-searched $k$-mers is strictly higher than the minimal threshold and
-lower or equal to the maximal threshold. While the minimal threshold
-enables to focus on sequences that are similar enough with a set of
-$k$-mers, the maximal threshold offers for instance a way to remove
-contaminated sequences.
-
-The sequences to be queried can be provided as a fasta or fastq file
-(gzipped or not). They can also be read directly from the standard
-input (*stdin*). This offers the may to stream sequences as they arrive,
-for instance when they are obtained during an Oxford Nanopore sequencing
-process.
-
-The output format of queried sequences respects the input format: if the
-input is in fasta (resp. fastq), the output is in fasta (resp. fastq).
 
 # Conclusion
 
