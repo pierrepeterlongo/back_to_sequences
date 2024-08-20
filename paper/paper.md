@@ -48,8 +48,6 @@ A vast majority of bioinformatics tools dedicated to the treatment of
   $k$-mers in hundreds of millions of reads in a matter of a few
   minutes.
 
-  Availability: github.com/pierrepeterlongo/back_to_sequences
-
 # Statement of need
 
 In the 2010s, following the emergence of next-generation sequencing
