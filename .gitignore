@@ -37,3 +37,11 @@ Cargo.lock
 log_benchs_synthetic.txt 
 settings.json
 bug
+tiny_test/1_out.fa
+tiny_test/1.fa
+tiny_test/2_out.fa
+tiny_test/2.fa
+tiny_test/3_out.fa
+tiny_test/3.fa
+tiny_test/in.fof
+tiny_test/out.fof

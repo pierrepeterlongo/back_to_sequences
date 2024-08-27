@@ -124,7 +124,7 @@ queried set $\mathcal{S}$ can also be output.
 # Possible Alternatives
 
 To the best of our knowledge, there exists no tool specifically
-dedicated to this task, while indexing the set of $k$-mers$\mathcal{K}$.
+dedicated to this task, while indexing the set of $k$-mers $\mathcal{K}$.
 
 Genotypers as `kage` [@grytten2022kage], using
 `kmer mapper` [@kmermapper], provide a way to count the number of
@@ -136,15 +136,12 @@ Finding one unique $k$-mer of interest in a set of sequences can be done
 using the classical `grep` or more recent pattern-matching tools such as
 "*The Platinum Searcher*" [@pt] or "*The Silver Searcher*" [@ag].
 
-As for testing, on the MacBook, Apple M2 pro, we queried one $k$-mer in
-the $\mathcal{S}_{100M}$ dataset (see
-Section [2.1](#ssec:random_banch){reference-type="ref"
-reference="ssec:random_banch"}) using `grep`, *The Platinum Searcher*,
-and *The Silver Searcher*.
+As for testing, we queried one $k$-mer in a dataset composed of 100 million sequences, each of length 100
+nucleotides (see the [documentation](https://b2s-doc.readthedocs.io/en/latest/benchmark.html) for details), using these three tools.
 
 -   `grep` required 44 seconds. Thus, by simple extrapolation, searching
     for one million $k$-mers on a single computer would require
-    approximately 500 days, to be compared to 5 to 6 minutes using
+    approximately 500 days, to be compared to less than a minute using
     `back_to_sequences`.
 
 -   `pt` (*The Platinum Searcher*) required 15 seconds, which can be
