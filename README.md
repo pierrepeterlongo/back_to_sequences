@@ -35,7 +35,7 @@ Please reafer the specific documentation for
 
 
 ## Contributions
-Please check out [How to contribute](CONTRIBUTION.md)
+Please check out [How to contribute](CONTRIBUTING.md)
 
 
 ## Documentation
