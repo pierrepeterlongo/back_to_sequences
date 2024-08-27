@@ -17,6 +17,8 @@ TGGATAAAAAGGCTGACGAAAGGTCTAGCTAAAATTGTCAGGTGCTCTCAGATAAAGCAGTAAGCGAGTTGGTGTTCGCT
 ```
 In this case 20 kmers are shared with the indexed kmers. This represents 6.13% of the kmers in the sequence.
 
+## Install
+Please see https://b2s-doc.readthedocs.io/en/latest/usage.html#installation
 
 ## Simplest usage
 ```bash
@@ -25,6 +27,16 @@ back_to_sequences --in-kmers kmers.fasta --in-sequences reads.fasta --out-sequen
 The `filtered_reads.fasta` file contains the original sequences (here reads) from `reads.fasta` that contain at least one of the kmers from `kmers.fasta`. The headers of each read is the same as in `reads.fasta`, plus the estimated ratio of shared kmers and number of shared kmers.
 
 As the --out-kmers option is used, the file `counted_kmers.txt` contains for each kmer in `kmers.fasta` the number of times it was found in `filtered_reads.fasta`.
+
+## Basical usages and parameters
+Please reafer the specific documentation for
+* [basical usages](https://b2s-doc.readthedocs.io/en/latest/use%20cases.html)
+* [a complete description of parameters](https://b2s-doc.readthedocs.io/en/latest/usage.html#back-to-sequences-parameters)
+
+
+## Contributions
+Please check out [How to contribute](CONTRIBUTION.md)
+
 
 ## Documentation
 **Full documentation** is available at [https://b2s-doc.readthedocs.io/en/latest/](https://b2s-doc.readthedocs.io/en/latest/)
