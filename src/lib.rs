@@ -25,8 +25,9 @@ use file_parsing::read_file_lines;
 
 use crate::kmer_counter::KmerCounter;
 
-/// Extract sequences that contain some kmers and
-/// output the kmers that occur in the reads with their number of occurrences
+/// Extract sequences that contain some kmers 
+///
+/// Also output the kmers that occur in the reads with their number of occurrences.
 #[allow(clippy::too_many_arguments)]
 pub fn back_to_sequences<T: KmerCounter>(
     in_fasta_reads: String,
@@ -124,9 +125,10 @@ pub fn back_to_sequences<T: KmerCounter>(
     Ok(())
 }
 
-/// Extract sequences that contain some kmers and
-/// output the kmers that occur in the reads with their number of occurrences
-/// but instead of using a single input file takes a txt file with the path
+/// Extract sequences that contain some kmers 
+///
+/// Also output the kmers that occur in the reads with their number of occurrences.
+/// Instead of using a single input file takes a txt file with the path
 /// of multiple files
 #[allow(clippy::too_many_arguments)]
 pub fn back_to_multiple_sequences(
