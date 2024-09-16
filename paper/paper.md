@@ -42,7 +42,7 @@ A vast majority of bioinformatics tools dedicated to the treatment of
   association is costly. In this work, we present "`back_to_sequences`",
   a simple tool designed to index a set of $k$-mers of interest and to
   stream a set of sequences, extracting those containing at least one of
-  the indexed $k$-mer. In addition, the occurrences of $k$-mers in the
+  the indexed $k$-mer. In addition, the occurrence positions of $k$-mers in the
   sequences can be provided. Our results show that `back_to_sequences`
   streams $\approx200$ short reads per millisecond, allowing to search
   $k$-mers in hundreds of millions of reads in a matter of a few
@@ -119,7 +119,7 @@ but do not extract the sequences from which they originate.
 In this context, we propose `back_to_sequences`, a tool specifically
 dedicated to extracting from $\mathcal{S}$, a set of sequences (e.g.
 reads), those that contain some of the $k$-mers from a set $\mathcal{K}$
-given as input. The occurrences of $k$-mers in each sequence of the
+given as input. The occurrence positions of $k$-mers in each sequence of the
 queried set $\mathcal{S}$ can also be output.
 
 # Possible Alternatives
