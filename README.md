@@ -3,7 +3,7 @@
 ![tests](https://github.com/pierrepeterlongo/back_to_sequences/workflows/tests/badge.svg)
 ![lints](https://github.com/pierrepeterlongo/back_to_sequences/workflows/lints/badge.svg)
 [![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
-
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.07066/status.svg)](https://doi.org/10.21105/joss.07066)
 
 <img src="k2s.jpg" alt="Old library - IA generated" width="150" height="150">
 
