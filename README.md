@@ -35,8 +35,8 @@ Example results obtained on
 * a MacBook, Apple M2 pro, 16 GB RAM, with 10 threads, denoted by "mac" in the table below.
 * AMD Ryzen 7 4.2 GHz 5800X 64 GB RAM,  with 16 threads, denoted by "AMD" in the table below.
 
-We indexed: one million kmers (exactly 995,318) of length 31.
-We queried: from 10,000 reads to 200 million reads (+ 1 billion on the cluster), each of length 100.
+Indexed: one million kmers eacho of length 31.
+We queried: from 10,000 reads to 200 million reads each of length 100.
 
 | Number of reads | Time genouest | Time mac | Time AMD | max RAM |
 |:---------------:|:-------------:|:--------:|:--------:|:-------:|
