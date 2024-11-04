@@ -28,11 +28,11 @@ Options:
               If the stranded option is not used (default), a kmer
               and its reverse complement are considered as the same kmer.
       --in-sequences <IN_SEQUENCES>
-          Input fasta or fastq [.gz] file containing the original sequences (eg. reads).
+          Input fasta or fastq [.gz|zst] file containing the original sequences (eg. reads).
               The stdin is used if not provided
               (and if `--in_filelist` is not provided neither) [default: ]
       --in-filelist <IN_FILELIST>
-          Input txt file containing in each line a path to a fasta or fastq [.gz] file
+          Input txt file containing in each line a path to a fasta or fastq [.gz|zst] file
           containing the original sequences (eg. reads).
               Note1: if this option is used, the `--out_filelist` option must be used.
                      The number of lines in out_filelist must be the same as in_filelist
