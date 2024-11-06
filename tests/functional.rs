@@ -213,7 +213,7 @@ kmers with their number of occurrences in the original sequences are in file {}
         kmers_out_path.display(),
     );
 
-    let assert = cmd.assert().stdout(out);
+    let assert = cmd.assert().stderr(out);
 
     assert.success();
 
@@ -273,7 +273,7 @@ kmers with their number of occurrences in the original sequences are in file {}
         kmers_out_path.display(),
     );
 
-    let assert = cmd.assert().stdout(out);
+    let assert = cmd.assert().stderr(out);
 
     assert.success();
 
@@ -330,7 +330,7 @@ kmers with their number of occurrences in the original sequences are in file {}
         kmers_out_path.display(),
     );
 
-    let assert = cmd.assert().stdout(out);
+    let assert = cmd.assert().stderr(out);
 
     assert.success();
 
@@ -396,7 +396,7 @@ kmers with their number of occurrences in the original sequences are in file {}
         kmers_out_path.display(),
     );
 
-    let assert = cmd.assert().stdout(out);
+    let assert = cmd.assert().stderr(out);
 
     assert.success();
 
@@ -446,7 +446,7 @@ fn multi_inout_not_same_length() -> std::result::Result<(), anyhow::Error> {
 
     let assert = cmd
         .assert()
-        .stderr("Error: Error: the number of input files and output files must be the same\n");
+        .stderr("Error: the number of input files and output files must be the same\n");
 
     assert.failure();
 
@@ -513,7 +513,7 @@ kmers with their number of occurrences in the original sequences are in file {}
         kmers_out_path.display(),
     );
 
-    let assert = cmd.assert().stdout(out);
+    let assert = cmd.assert().stderr(out);
 
     assert.success();
 
@@ -601,7 +601,7 @@ kmers with their number of occurrences in the original sequences are in file {}
         kmers_out_path.display(),
     );
 
-    let assert = cmd.assert().stdout(out);
+    let assert = cmd.assert().stderr(out);
 
     assert.success();
 
