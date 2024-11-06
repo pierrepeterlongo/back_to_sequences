@@ -72,7 +72,7 @@ pub fn index_kmers<T: KmerCounter>(
             i += 1;
         }
     }
-    println!(
+    eprintln!(
         "Indexed {} kmers, each of size {}",
         kmer_set.len(),
         kmer_size

@@ -2,8 +2,6 @@
 
 /* std use */
 
-// TODO : limit the number of threads with an option
-
 use std::env;
 
 /* crates use */

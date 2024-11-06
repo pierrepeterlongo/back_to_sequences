@@ -1,6 +1,6 @@
 [package]
 name = "back_to_sequences"
-version = "0.6.7"
+version = "0.6.8"
 edition = "2021"
 
 authors = [
@@ -22,7 +22,7 @@ anyhow           = { version = "1" }
 clap             = { version = "4", features = ["derive", "cargo"] }
 
 # File parsing
-fxread           = { version = "0.2" }
+fxread           = { version = "0.2.14" }
 
 # Parallel
 rayon            = { version = "1" }
