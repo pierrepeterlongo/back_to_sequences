@@ -69,7 +69,7 @@ pub fn back_to_sequences<T: KmerCounter>(
                 query_reverse,
                 true, // in this case we map both strands
             )?;
-            println!(
+            eprintln!(
                 "Filtered sequences with exact kmer count and mapping positions are in file {}",
                 out_fasta_reads
             );
@@ -86,14 +86,14 @@ pub fn back_to_sequences<T: KmerCounter>(
                 query_reverse,
                 false, // in this case we do not map both strands
             )?;
-            println!(
+            eprintln!(
                 "Filtered sequences with exact kmer count are in file {}",
                 out_fasta_reads
             );
         }
     } else {
         // if no output file is provided, only the kmers with their count is output
-        println!("No output file provided, only the kmers with their count is output");
+        eprintln!("No output file provided, only the kmers with their count is output");
         count::only_kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
             in_fasta_reads,
             &kmer_set,
@@ -117,7 +117,7 @@ pub fn back_to_sequences<T: KmerCounter>(
         })()
         .context("Error writing the kmers file")?;
 
-        println!(
+        eprintln!(
             "kmers with their number of occurrences in the original sequences are in file {}",
             out_txt_kmers
         );
@@ -185,7 +185,7 @@ pub fn back_to_multiple_sequences(
                 query_reverse,
                 true, // in this case we map both strands
             )?;
-            println!(
+            eprintln!(
             "Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}",
             in_f, out_f
         );
@@ -204,7 +204,7 @@ pub fn back_to_multiple_sequences(
                 query_reverse,
                 false, // in this case we do not map both strands
             )?;
-            println!(
+            eprintln!(
                 "Filtered sequences from {} with exact kmer count are in files specified at {}",
                 in_f, out_f
             );
@@ -226,7 +226,7 @@ pub fn back_to_multiple_sequences(
         })()
         .context("Error writing the kmers file: {}")?;
 
-        println!(
+        eprintln!(
             "kmers with their number of occurrences in the original sequences are in file {}",
             out_txt_kmers
         );

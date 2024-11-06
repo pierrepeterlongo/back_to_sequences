@@ -98,15 +98,26 @@ impl MatchedSequence for MatchedSequencePositional {
 
 impl fmt::Display for MatchedSequencePositional {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut result = format!(" {} {}", self.count, round(self.percent_shared_kmers(), 5));
-        for (position, forward) in self.matched_positions.iter() {
+        // Pre-allocate vector with estimated capacity
+        let capacity = self.matched_positions.len() * 8 + 20; // rough estimate for numbers
+        let mut parts = Vec::with_capacity(capacity);
+        
+        // Add initial count and percent
+        parts.push(self.count.to_string());
+        parts.push(round(self.percent_shared_kmers(), 5).to_string());
+        
+        // Add positions 
+        for (position, forward) in &self.matched_positions {
             if *forward {
-                result.push_str(&format!(" {}", position));
+                parts.push(position.to_string());
             } else {
-                result.push_str(&format!(" -{}", position));
+                // Avoid allocating a new string for the minus sign
+                parts.push(format!("-{}", position));
             }
         }
-        write!(f, "{}", result)
+        
+        // Join all parts with spaces
+        write!(f, " {}", parts.join(" "))
     }
 }
 
