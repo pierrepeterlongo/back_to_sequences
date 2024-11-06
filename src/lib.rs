@@ -160,7 +160,10 @@ pub fn back_to_multiple_sequences(
         .unwrap();
 
     if input_files.len() != output_files.len() {
-        anyhow::bail!("Error: the number of input files and output files must be the same");
+        // anyhow::bail!("The number of input files and output files must be the same");
+        eprintln!("Error: the number of input files and output files must be the same");
+        // exit the program
+        std::process::exit(1);
     }
 
     let (kmer_set, kmer_size) = kmer_hash::index_kmers::<RelaxedCounter>(

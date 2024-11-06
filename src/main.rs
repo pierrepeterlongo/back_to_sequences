@@ -24,7 +24,8 @@ fn main() -> anyhow::Result<()> {
 
     // If out_sequences and out_kmers are not provided, we do nothing, we can quit
     if args.out_sequences.is_empty() && args.out_filelist.is_empty() && args.out_kmers.is_empty() {
-        anyhow::bail!("no output file provided, nothing to do");
+        eprintln!("Error: no output file provided, nothing to do");
+        std::process::exit(1);
     }
 
     // If out_kmers is not provided but output_kmer_positions is true, warn that it has no effect
@@ -42,18 +43,21 @@ fn main() -> anyhow::Result<()> {
     }
 
     if args.min_threshold > args.max_threshold {
-        anyhow::bail!("--min-threshold must be <= --max-threshold");
+        eprintln!("Error: --min-threshold must be <= --max-threshold");
+        std::process::exit(1);
     }
 
     if args.in_sequences.is_empty() && !args.in_filelist.is_empty() {
         if args.out_filelist.is_empty() {
-            anyhow::bail!("--in-filelist requires --out-filelist");
+            eprintln!("Error: --in-filelist requires --out-filelist");
+            std::process::exit(1);
         }
 
         if args.output_kmer_positions {
-            anyhow::bail!(
-                "--in-filelist and --output-kmer-positions are mutually exclusive (for now)"
+            eprintln!(
+                "Error: --in-filelist and --output-kmer-positions are mutually exclusive (for now)"
             );
+            std::process::exit(1);
         }
         back_to_multiple_sequences(
             args.in_filelist,
