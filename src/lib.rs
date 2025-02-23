@@ -25,6 +25,9 @@ use file_parsing::read_file_lines;
 
 use crate::kmer_counter::KmerCounter;
 
+
+static mut KMER_SIZE: usize = 0;
+
 /// Extract sequences that contain some kmers
 ///
 /// Also output the kmers that occur in the reads with their number of occurrences.
@@ -43,6 +46,9 @@ pub fn back_to_sequences<T: KmerCounter>(
     query_reverse: bool,
     no_low_complexity: bool,
 ) -> anyhow::Result<()> {
+    unsafe {
+        KMER_SIZE = kmer_size;
+    }
     // check that in_fasta_reads is a non empty file if it exists:
     if !in_fasta_reads.is_empty() {
         cli::validate_non_empty_file(in_fasta_reads.clone())?;
@@ -145,6 +151,9 @@ pub fn back_to_multiple_sequences(
     query_reverse: bool,
     no_low_complexity: bool,
 ) -> anyhow::Result<()> {
+    unsafe {
+        KMER_SIZE = kmer_size;
+    }
     // check that in_fasta_reads is a non empty file if it exists:
     if !in_fasta_filenames.is_empty() {
         cli::validate_non_empty_file(in_fasta_filenames.clone())?;

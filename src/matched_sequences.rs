@@ -106,8 +106,20 @@ impl fmt::Display for MatchedSequencePositional {
         parts.push(self.count.to_string());
         parts.push(round(self.percent_shared_kmers(), 5).to_string());
         
+        // Store the number of positions covered by the matched kmers
+        let mut first_uncovered_position = 0;
+        let mut number_covered_positions = 0;
+
         // Add positions 
         for (position, forward) in &self.matched_positions {
+            if first_uncovered_position < *position {
+                number_covered_positions += unsafe { crate::KMER_SIZE };
+            }
+            else {
+                number_covered_positions += position + unsafe { crate::KMER_SIZE } - first_uncovered_position;
+            }
+            first_uncovered_position = position + unsafe { crate::KMER_SIZE };
+
             if *forward {
                 parts.push(position.to_string());
             } else {
@@ -117,18 +129,21 @@ impl fmt::Display for MatchedSequencePositional {
         }
         
         // Join all parts with spaces
-        write!(f, " {}", parts.join(" "))
+        write!(f, " {} ({})", parts.join(" "), number_covered_positions)
+
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::KMER_SIZE;
+
     use super::*;
     #[test]
     fn simple_match() {
-        let kmer_size = 5;
+        unsafe { KMER_SIZE = 5 };
         let sequence = b"ACGTGACTACGGCATAGCATCGTAGCTGATGTGTCAGCTGTCAGTCA";
-        let mut mc = MachedCount::new(sequence.len() - kmer_size + 1);
+        let mut mc = MachedCount::new(sequence.len() - unsafe { KMER_SIZE } + 1);
         mc.add_match(4, true);
         mc.add_match(5, false);
         mc.add_match(6, false);
@@ -138,13 +153,13 @@ mod tests {
 
     #[test]
     fn positional_match() {
-        let kmer_size = 5;
+        unsafe { KMER_SIZE = 5 };
         let sequence = b"ACGTGACTACGGCATAGCATCGTAGCTGATGTGTCAGCTGTCAGTCA";
-        let mut mc = MatchedSequencePositional::new(sequence.len() - kmer_size + 1);
+        let mut mc = MatchedSequencePositional::new(sequence.len() - unsafe { KMER_SIZE } + 1);
         mc.add_match(4, true);
         mc.add_match(5, false);
         mc.add_match(6, false);
 
-        assert_eq!(mc.to_string(), " 3 6.97674 4 -5 -6");
+        assert_eq!(mc.to_string(), " 3 6.97674 4 -5 -6 (7)");
     }
 }
