@@ -62,6 +62,9 @@ Options:
       --output-mapping-positions
           If provided, output matching positions on sequences in the
           out_sequence file(s)
+          Also outputs the number and ratio of shared kmers
+          Also outputs the number of positions covered by shared kmers
+          (last value in parathesis)
   -k, --kmer-size <KMER_SIZE>
           Size of the kmers to index and search [default: 31]
   -m, --min-threshold <MIN_THRESHOLD>

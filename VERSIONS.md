@@ -58,4 +58,6 @@
     * Optimized display function when using `--output-mapping-positions`
     * redirected all log messages to stderr
     * uses fxreads 0.2.14
+* 0.6.9 23/02/2025
+    * Using mapping_position also outputs the number of positions covered by at least a shared kmer.
     
