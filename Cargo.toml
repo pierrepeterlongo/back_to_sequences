@@ -22,18 +22,18 @@ anyhow           = { version = "1" }
 clap             = { version = "4", features = ["derive", "cargo"] }
 
 # File parsing
-fxread           = { version = "0.2.14" }
+fxread           = { version = "0.2" }
 
 # Parallel
 rayon            = { version = "1" }
 
 # Other
-ahash            = { version = "0.8.6" }
+ahash            = { version = "0.8" }
 atomic-counter   = { version = "1" }
 auto_enums       = { version = "0.8" }
-ctor             = { version = "0.2" }
+ctor             = { version = "0.3" }
 entropy	         = { version = "0.4"}
-integer-encoding = { version = "4.0" }
+integer-encoding = { version = "4" }
 
 
 [dev-dependencies]
