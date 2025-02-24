@@ -58,49 +58,72 @@ pub fn back_to_sequences<T: KmerCounter>(
         // if an output file is provided, we output the sequences that contain the kmers
         if output_mapping_positions {
             // if output_mapping_positions is true, we output the kmers with their count and mapping positions
-            count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
-                in_fasta_reads,
-                &kmer_set,
-                kmer_size,
-                out_fasta_reads.clone(),
-                min_threshold,
-                max_threshold,
-                stranded,
-                query_reverse,
-                true, // in this case we map both strands
-            )?;
+            let (total_kmer, match_kmer) =
+                count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
+                    in_fasta_reads,
+                    &kmer_set,
+                    kmer_size,
+                    out_fasta_reads.clone(),
+                    min_threshold,
+                    max_threshold,
+                    stranded,
+                    query_reverse,
+                    true, // in this case we map both strands
+                )?;
             eprintln!(
                 "Filtered sequences with exact kmer count and mapping positions are in file {}",
                 out_fasta_reads
             );
+            println!(
+                "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
+                total_kmer,
+                match_kmer,
+                total_kmer as f64 / match_kmer as f64
+            );
         } else {
             // if output_mapping_positions is false, we output the kmers with their count
-            count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
-                in_fasta_reads,
-                &kmer_set,
-                kmer_size,
-                out_fasta_reads.clone(),
-                min_threshold,
-                max_threshold,
-                stranded,
-                query_reverse,
-                false, // in this case we do not map both strands
-            )?;
+            let (total_kmer, match_kmer) =
+                count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
+                    in_fasta_reads,
+                    &kmer_set,
+                    kmer_size,
+                    out_fasta_reads.clone(),
+                    min_threshold,
+                    max_threshold,
+                    stranded,
+                    query_reverse,
+                    false, // in this case we do not map both strands
+                )?;
             eprintln!(
                 "Filtered sequences with exact kmer count are in file {}",
                 out_fasta_reads
+            );
+
+            println!(
+                "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
+                total_kmer,
+                match_kmer,
+                total_kmer as f64 / match_kmer as f64
             );
         }
     } else {
         // if no output file is provided, only the kmers with their count is output
         eprintln!("No output file provided, only the kmers with their count is output");
-        count::only_kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
-            in_fasta_reads,
-            &kmer_set,
-            kmer_size,
-            stranded,
-            query_reverse,
-        )?;
+        let (total_kmer, match_kmer) =
+            count::only_kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
+                in_fasta_reads,
+                &kmer_set,
+                kmer_size,
+                stranded,
+                query_reverse,
+            )?;
+
+        println!(
+            "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
+            total_kmer,
+            match_kmer,
+            total_kmer as f64 / match_kmer as f64
+        );
     }
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
     if !out_txt_kmers.is_empty() {
@@ -177,39 +200,55 @@ pub fn back_to_multiple_sequences(
     if output_mapping_positions {
         // if output_mapping_positions is true, we output the kmers with their count and mapping positions
         for (in_f, out_f) in input_files.iter().zip(output_files.iter()) {
-            count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
-                in_f.to_string(),
-                &kmer_set,
-                kmer_size,
-                out_f.clone().to_string(),
-                min_threshold,
-                max_threshold,
-                stranded,
-                query_reverse,
-                true, // in this case we map both strands
-            )?;
+            let (total_kmer, match_kmer) =
+                count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
+                    in_f.to_string(),
+                    &kmer_set,
+                    kmer_size,
+                    out_f.clone().to_string(),
+                    min_threshold,
+                    max_threshold,
+                    stranded,
+                    query_reverse,
+                    true, // in this case we map both strands
+                )?;
             eprintln!(
             "Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}",
             in_f, out_f
-        );
+            );
+
+            println!(
+                "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
+                total_kmer,
+                match_kmer,
+                total_kmer as f64 / match_kmer as f64
+            );
         }
     } else {
         // if output_mapping_positions is false, we output the kmers with their count
         for (in_f, out_f) in input_files.iter().zip(output_files.iter()) {
-            count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
-                in_f.to_string(),
-                &kmer_set,
-                kmer_size,
-                out_f.clone().to_string(),
-                min_threshold,
-                max_threshold,
-                stranded,
-                query_reverse,
-                false, // in this case we do not map both strands
-            )?;
+            let (total_kmer, match_kmer) =
+                count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
+                    in_f.to_string(),
+                    &kmer_set,
+                    kmer_size,
+                    out_f.clone().to_string(),
+                    min_threshold,
+                    max_threshold,
+                    stranded,
+                    query_reverse,
+                    false, // in this case we do not map both strands
+                )?;
             eprintln!(
                 "Filtered sequences from {} with exact kmer count are in files specified at {}",
                 in_f, out_f
+            );
+
+            println!(
+                "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
+                total_kmer,
+                match_kmer,
+                total_kmer as f64 / match_kmer as f64
             );
         }
     }
