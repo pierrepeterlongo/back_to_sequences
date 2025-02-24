@@ -45,7 +45,7 @@ pub fn kmers_in_fasta_file_par<T, D>(
     stranded: bool,
     query_reverse: bool,
     map_both_strands: bool,
-) -> anyhow::Result<()>
+) -> anyhow::Result<(usize, usize)>
 where
     T: KmerCounter,
     D: MatchedSequence + Send + 'static,
@@ -144,28 +144,37 @@ where
         unreachable!()
     });
 
-    input_rx
+    let (total_kmer, match_kmer) = input_rx
         .into_iter()
         .par_bridge()
-        .try_for_each(move |mut chunk| {
+        .map(move |mut chunk| {
+            let mut tt_kmer = 0;
+            let mut match_kmer = 0;
+
             for (read_id, record, nb_shared_kmers) in &mut chunk.records {
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par::<_, D>(
+                let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
                     record.seq(),
                     *read_id,
                     kmer_size,
                     stranded,
                     map_both_strands,
-                ));
+                );
+
+                tt_kmer += proxy_shared_kmers.mapped_position_size();
+                match_kmer += proxy_shared_kmers.match_count();
+
+                *nb_shared_kmers = Some(proxy_shared_kmers);
             }
-            output_tx.send(chunk)
+            output_tx.send(chunk).ok(); // result ignored because an error on output_tx.send() would come together with an io
+                                        // error in the writer thread
+            (tt_kmer, match_kmer)
         })
-        .ok(); // result ignored because an error on output_tx.send() would come together with an io
-               // error in the writer thread
+        .reduce(|| (0, 0), |a, b| (a.0 + b.0, a.1 + b.1));
 
     reader_thread
         .join()
@@ -174,7 +183,9 @@ where
     writer_thread
         .join()
         .unwrap()
-        .context("Error writing the sequences")
+        .context("Error writing the sequences")?;
+
+    Ok((total_kmer, match_kmer))
 }
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
@@ -184,7 +195,7 @@ pub fn only_kmers_in_fasta_file_par<T, D>(
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
-) -> anyhow::Result<()>
+) -> anyhow::Result<(usize, usize)>
 where
     T: KmerCounter,
     D: MatchedSequence + Send + 'static,
@@ -226,30 +237,43 @@ where
         unreachable!()
     });
 
-    input_rx
+    let (total_kmer, match_kmer) = input_rx
         .into_iter()
         .par_bridge()
-        .for_each(move |mut chunk| {
+        .map(move |mut chunk| {
+            let mut tt_kmer = 0;
+            let mut match_kmer = 0;
+
             for (read_id, record, nb_shared_kmers) in &mut chunk.records {
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
                 }
-                *nb_shared_kmers = Some(shared_kmers_par::<_, D>(
+                let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
                     record.seq(),
                     *read_id,
                     kmer_size,
                     stranded,
                     false, // in this case we map only the kmer or its reverse complement not both
-                )); // Convert the result to usize
+                );
+
+                tt_kmer += proxy_shared_kmers.mapped_position_size();
+                match_kmer += proxy_shared_kmers.match_count();
+
+                *nb_shared_kmers = Some(proxy_shared_kmers);
             }
-        });
+
+            (tt_kmer, match_kmer)
+        })
+        .reduce(|| (0, 0), |a, b| (a.0 + b.0, a.1 + b.1));
 
     reader_thread
         .join()
         .unwrap()
-        .context("Error reading the sequences")
+        .context("Error reading the sequences")?;
+
+    Ok((total_kmer, match_kmer))
 }
 
 /// count the number of indexed kmers in a given read

@@ -19,11 +19,19 @@ where
     /// add a match to the read
     fn add_match(&mut self, position: usize, forward: bool);
 
+    /// return number of match in MachedCount
+    fn match_count(&self) -> usize;
+
+    /// return number of mapped_position
+    fn mapped_position_size(&self) -> usize;
+
     // /// prints the matched read
     // fn to_string(&self) -> String;
 
     /// returns the percentage of the read that was matched
-    fn percent_shared_kmers(&self) -> f32;
+    fn percent_shared_kmers(&self) -> f32 {
+        100.0 * self.match_count() as f32 / (self.mapped_position_size() as f32)
+    }
 }
 
 /// a read matched by a kmer, only counting hte number of matched kmers
@@ -58,8 +66,13 @@ impl MatchedSequence for MachedCount {
         self.count += 1;
     }
 
-    fn percent_shared_kmers(&self) -> f32 {
-        100.0 * self.count as f32 / (self.mapped_position_size as f32)
+    /// return number of mapped_position
+    fn mapped_position_size(&self) -> usize {
+        self.mapped_position_size
+    }
+
+    fn match_count(&self) -> usize {
+        self.count
     }
 }
 
@@ -67,9 +80,6 @@ impl MatchedSequence for MachedCount {
 pub struct MatchedSequencePositional {
     /// size of the positions where a match can occur (size_seq - k +1)
     pub mapped_position_size: usize,
-
-    /// number of matched kmers
-    pub count: usize,
 
     /// Position of the matched kmers in the read
     /// the boolean indicates if the kmer was mapped in the forward or reverse strand
@@ -80,19 +90,20 @@ impl MatchedSequence for MatchedSequencePositional {
     fn new(mapped_position_size: usize) -> Self {
         MatchedSequencePositional {
             mapped_position_size,
-            count: 0,
             matched_positions: Vec::new(),
         }
     }
 
     fn add_match(&mut self, position: usize, forward: bool) {
-        self.count += 1;
         self.matched_positions.push((position, forward));
     }
 
-    // TODO how to avoid to duplicate this code
-    fn percent_shared_kmers(&self) -> f32 {
-        100.0 * self.count as f32 / (self.mapped_position_size as f32)
+    fn match_count(&self) -> usize {
+        self.matched_positions.len()
+    }
+
+    fn mapped_position_size(&self) -> usize {
+        self.mapped_position_size
     }
 }
 
@@ -101,12 +112,12 @@ impl fmt::Display for MatchedSequencePositional {
         // Pre-allocate vector with estimated capacity
         let capacity = self.matched_positions.len() * 8 + 20; // rough estimate for numbers
         let mut parts = Vec::with_capacity(capacity);
-        
+
         // Add initial count and percent
-        parts.push(self.count.to_string());
+        parts.push(self.matched_positions.len().to_string());
         parts.push(round(self.percent_shared_kmers(), 5).to_string());
-        
-        // Add positions 
+
+        // Add positions
         for (position, forward) in &self.matched_positions {
             if *forward {
                 parts.push(position.to_string());
@@ -115,7 +126,7 @@ impl fmt::Display for MatchedSequencePositional {
                 parts.push(format!("-{}", position));
             }
         }
-        
+
         // Join all parts with spaces
         write!(f, " {}", parts.join(" "))
     }
