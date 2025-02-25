@@ -300,6 +300,7 @@ where
     if !map_both_strands {
         // if we do not map both strands, we only map the kmer or its reverse complement
         let canonical_kmer = buf.as_mut_slice();
+        let mut previous_kmer_solid = false;
 
         for i in 0..(read.len() - kmer_size + 1) {
             let kmer = &read[i..(i + kmer_size)];
@@ -307,23 +308,36 @@ where
             sequence_normalizer.copy_to_slice(canonical_kmer);
             if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
                 result.add_match(i, sequence_normalizer.is_raw());
+
+                previous_kmer_solid = true;
+                result.add_covered_base(1);
+
                 kmer_counter.add_match(crate::kmer_counter::KmerMatch {
                     id_read: (read_id),
                     position: (i),
                     forward: (sequence_normalizer.is_raw()),
                 });
+            } else if previous_kmer_solid {
+                result.add_covered_base(kmer_size - 1);
+                previous_kmer_solid = false;
             }
         }
+        if previous_kmer_solid {
+            result.add_covered_base(kmer_size - 1);
+        }
+
         result
     } else {
         // if we map both strands, we map the kmer and its reverse complement
         // Note that if --stranded is not set, the mapping is always detected in forward strand
         let normalizer_kmer = buf.as_mut_slice();
+        let mut previous_kmer_solid = false;
 
         for i in 0..(read.len() - kmer_size + 1) {
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(normalizer_kmer);
+            let kmer_match;
 
             if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
                 result.add_match(i, true);
@@ -332,6 +346,7 @@ where
                     position: (i),
                     forward: true,
                 });
+                kmer_match = true;
             } else {
                 // forward did not match, we try the reverse one
                 rev_comp(normalizer_kmer);
@@ -342,9 +357,25 @@ where
                         position: (i),
                         forward: false,
                     });
+                    kmer_match = true;
+                } else {
+                    kmer_match = false;
                 }
             }
+
+            if kmer_match {
+                result.add_covered_base(1);
+            } else if previous_kmer_solid {
+                result.add_covered_base(kmer_size - 1);
+            }
+
+            previous_kmer_solid = kmer_match
         }
+
+        if previous_kmer_solid {
+            result.add_covered_base(kmer_size - 1);
+        }
+
         result
     }
 }
