@@ -58,7 +58,7 @@ pub fn back_to_sequences<T: KmerCounter>(
         // if an output file is provided, we output the sequences that contain the kmers
         if output_mapping_positions {
             // if output_mapping_positions is true, we output the kmers with their count and mapping positions
-            let (total_kmer, match_kmer) =
+            let (total_nucleotides, total_kmer, match_kmer) =
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
                     in_fasta_reads,
                     &kmer_set,
@@ -75,14 +75,18 @@ pub fn back_to_sequences<T: KmerCounter>(
                 out_fasta_reads
             );
             println!(
-                "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
+                "Number of nucleotides seen {}",
+                total_nucleotides
+            );
+            println!(
+                "Number of kmer seen {}, number of kmer match {} kmer ratio {:.5}",
                 total_kmer,
                 match_kmer,
-                total_kmer as f64 / match_kmer as f64
+                match_kmer as f64 / total_kmer as f64 * 100.0
             );
         } else {
             // if output_mapping_positions is false, we output the kmers with their count
-            let (total_kmer, match_kmer) =
+            let (total_nucleotides, total_kmer, match_kmer) =
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                     in_fasta_reads,
                     &kmer_set,
@@ -98,18 +102,22 @@ pub fn back_to_sequences<T: KmerCounter>(
                 "Filtered sequences with exact kmer count are in file {}",
                 out_fasta_reads
             );
-
+            
+            println!(
+                "Number of nucleotides seen {}",
+                total_nucleotides
+            );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
                 total_kmer,
                 match_kmer,
-                total_kmer as f64 / match_kmer as f64
+                match_kmer as f64 / total_kmer as f64 * 100.0
             );
         }
     } else {
         // if no output file is provided, only the kmers with their count is output
         eprintln!("No output file provided, only the kmers with their count is output");
-        let (total_kmer, match_kmer) =
+        let (total_nucleotides, total_kmer, match_kmer) =
             count::only_kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                 in_fasta_reads,
                 &kmer_set,
@@ -117,12 +125,16 @@ pub fn back_to_sequences<T: KmerCounter>(
                 stranded,
                 query_reverse,
             )?;
-
+        
+        println!(
+            "Number of nucleotides seen {}",
+            total_nucleotides
+        );
         println!(
             "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
             total_kmer,
             match_kmer,
-            total_kmer as f64 / match_kmer as f64
+            match_kmer as f64 / total_kmer as f64 * 100.0       
         );
     }
     // if the out_kmers_file is not empty, we output counted kmers in the out_kmers_file file
@@ -200,7 +212,7 @@ pub fn back_to_multiple_sequences(
     if output_mapping_positions {
         // if output_mapping_positions is true, we output the kmers with their count and mapping positions
         for (in_f, out_f) in input_files.iter().zip(output_files.iter()) {
-            let (total_kmer, match_kmer) =
+            let (total_nucleotides, total_kmer, match_kmer) =
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
                     in_f.to_string(),
                     &kmer_set,
@@ -216,18 +228,21 @@ pub fn back_to_multiple_sequences(
             "Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}",
             in_f, out_f
             );
-
+            println!(
+                "Number of nucleotides seen {}",
+                total_nucleotides
+            );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
                 total_kmer,
                 match_kmer,
-                total_kmer as f64 / match_kmer as f64
+                match_kmer as f64 / total_kmer as f64 * 100.0
             );
         }
     } else {
         // if output_mapping_positions is false, we output the kmers with their count
         for (in_f, out_f) in input_files.iter().zip(output_files.iter()) {
-            let (total_kmer, match_kmer) =
+            let (total_nucleotides, total_kmer, match_kmer) =
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                     in_f.to_string(),
                     &kmer_set,
@@ -243,12 +258,15 @@ pub fn back_to_multiple_sequences(
                 "Filtered sequences from {} with exact kmer count are in files specified at {}",
                 in_f, out_f
             );
-
+            println!(
+                "Number of nucleotides seen {}",
+                total_nucleotides
+            );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
                 total_kmer,
                 match_kmer,
-                total_kmer as f64 / match_kmer as f64
+                match_kmer as f64 / total_kmer as f64 * 100.0
             );
         }
     }

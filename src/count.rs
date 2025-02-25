@@ -45,7 +45,7 @@ pub fn kmers_in_fasta_file_par<T, D>(
     stranded: bool,
     query_reverse: bool,
     map_both_strands: bool,
-) -> anyhow::Result<(usize, usize)>
+) -> anyhow::Result<(usize, usize, usize)>
 where
     T: KmerCounter,
     D: MatchedSequence + Send + 'static,
@@ -144,14 +144,16 @@ where
         unreachable!()
     });
 
-    let (total_kmer, match_kmer) = input_rx
+    let (total_nucleotides, total_kmer, match_kmer) = input_rx
         .into_iter()
         .par_bridge()
         .map(move |mut chunk| {
             let mut tt_kmer = 0;
             let mut match_kmer = 0;
+            let mut tt_nt = 0; // total number of nucleotides
 
             for (read_id, record, nb_shared_kmers) in &mut chunk.records {
+                tt_nt += record.seq().len();
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
@@ -172,9 +174,9 @@ where
             }
             output_tx.send(chunk).ok(); // result ignored because an error on output_tx.send() would come together with an io
                                         // error in the writer thread
-            (tt_kmer, match_kmer)
+            (tt_nt, tt_kmer, match_kmer)
         })
-        .reduce(|| (0, 0), |a, b| (a.0 + b.0, a.1 + b.1));
+        .reduce(|| (0, 0, 0), |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2));
 
     reader_thread
         .join()
@@ -185,7 +187,7 @@ where
         .unwrap()
         .context("Error writing the sequences")?;
 
-    Ok((total_kmer, match_kmer))
+    Ok((total_nucleotides, total_kmer, match_kmer))
 }
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
@@ -195,7 +197,7 @@ pub fn only_kmers_in_fasta_file_par<T, D>(
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
-) -> anyhow::Result<(usize, usize)>
+) -> anyhow::Result<(usize, usize, usize)>
 where
     T: KmerCounter,
     D: MatchedSequence + Send + 'static,
@@ -237,14 +239,16 @@ where
         unreachable!()
     });
 
-    let (total_kmer, match_kmer) = input_rx
+    let (total_nucleotides, total_kmer, match_kmer) = input_rx
         .into_iter()
         .par_bridge()
         .map(move |mut chunk| {
+            let mut tt_nt = 0; // total number of nucleotides
             let mut tt_kmer = 0;
             let mut match_kmer = 0;
 
             for (read_id, record, nb_shared_kmers) in &mut chunk.records {
+                tt_nt += record.seq().len();
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
@@ -264,16 +268,16 @@ where
                 *nb_shared_kmers = Some(proxy_shared_kmers);
             }
 
-            (tt_kmer, match_kmer)
+            (tt_nt, tt_kmer, match_kmer)
         })
-        .reduce(|| (0, 0), |a, b| (a.0 + b.0, a.1 + b.1));
+        .reduce(|| (0, 0, 0), |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2));
 
     reader_thread
         .join()
         .unwrap()
         .context("Error reading the sequences")?;
 
-    Ok((total_kmer, match_kmer))
+    Ok((total_nucleotides, total_kmer, match_kmer))
 }
 
 /// count the number of indexed kmers in a given read
@@ -300,7 +304,8 @@ where
     if !map_both_strands {
         // if we do not map both strands, we only map the kmer or its reverse complement
         let canonical_kmer = buf.as_mut_slice();
-        let mut previous_kmer_solid = false;
+        // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
+        let mut first_uncovered_position = 0;
 
         for i in 0..(read.len() - kmer_size + 1) {
             let kmer = &read[i..(i + kmer_size)];
@@ -308,36 +313,35 @@ where
             sequence_normalizer.copy_to_slice(canonical_kmer);
             if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
                 result.add_match(i, sequence_normalizer.is_raw());
+                if first_uncovered_position < i {
+                    result.add_covered_base(kmer_size);
+                }
+                else {
+                    result.add_covered_base(kmer_size + i - first_uncovered_position);
+                }
+                first_uncovered_position = i + kmer_size;
 
-                previous_kmer_solid = true;
-                result.add_covered_base(1);
 
                 kmer_counter.add_match(crate::kmer_counter::KmerMatch {
                     id_read: (read_id),
                     position: (i),
                     forward: (sequence_normalizer.is_raw()),
                 });
-            } else if previous_kmer_solid {
-                result.add_covered_base(kmer_size - 1);
-                previous_kmer_solid = false;
-            }
+            } 
         }
-        if previous_kmer_solid {
-            result.add_covered_base(kmer_size - 1);
-        }
-
         result
     } else {
         // if we map both strands, we map the kmer and its reverse complement
         // Note that if --stranded is not set, the mapping is always detected in forward strand
         let normalizer_kmer = buf.as_mut_slice();
-        let mut previous_kmer_solid = false;
+        // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
+        let mut first_uncovered_position = 0;
 
         for i in 0..(read.len() - kmer_size + 1) {
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(normalizer_kmer);
-            let kmer_match;
+
 
             if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
                 result.add_match(i, true);
@@ -346,7 +350,13 @@ where
                     position: (i),
                     forward: true,
                 });
-                kmer_match = true;
+                if first_uncovered_position < i {
+                    result.add_covered_base(kmer_size);
+                }
+                else {
+                    result.add_covered_base(kmer_size + i - first_uncovered_position);
+                }
+                first_uncovered_position = i + kmer_size;
             } else {
                 // forward did not match, we try the reverse one
                 rev_comp(normalizer_kmer);
@@ -357,25 +367,16 @@ where
                         position: (i),
                         forward: false,
                     });
-                    kmer_match = true;
-                } else {
-                    kmer_match = false;
-                }
+                    if first_uncovered_position < i {
+                        result.add_covered_base(kmer_size);
+                    }
+                    else {
+                        result.add_covered_base(kmer_size + i - first_uncovered_position);
+                    }
+                    first_uncovered_position = i + kmer_size;
+                }   
             }
-
-            if kmer_match {
-                result.add_covered_base(1);
-            } else if previous_kmer_solid {
-                result.add_covered_base(kmer_size - 1);
-            }
-
-            previous_kmer_solid = kmer_match
         }
-
-        if previous_kmer_solid {
-            result.add_covered_base(kmer_size - 1);
-        }
-
         result
     }
 }
