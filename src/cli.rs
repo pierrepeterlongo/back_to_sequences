@@ -48,10 +48,10 @@ pub struct Args {
     /// If provided, output a text file containing the kmers that occur in the reads
     /// with their
     ///  * number of occurrences
-    ///   or
+    ///  or
     ///  * their occurrence positions if the --output_kmer_positions option is used
-    ///   Note: if `--in_filelist` is used the output counted kmers are
-    ///   those occurring the last input file of that list
+    ///  Note: if `--in_filelist` is used the output counted kmers are
+    ///  those occurring the last input file of that list
     #[arg(long, default_value_t = String::from(""), verbatim_doc_comment)]
     pub out_kmers: String,
 
