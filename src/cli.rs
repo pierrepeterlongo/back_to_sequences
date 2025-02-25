@@ -68,6 +68,9 @@ pub struct Args {
 
     /// If provided, output matching positions on sequences in the
     /// out_sequence file(s)
+    /// Also outputs the number and ratio of shared kmers
+    /// Also outputs the number of positions covered by shared kmers
+    /// (last value in parathesis)
     #[arg(long, default_value_t = false, verbatim_doc_comment)]
     pub output_mapping_positions: bool,
 

@@ -19,6 +19,9 @@ where
     /// add a match to the read
     fn add_match(&mut self, position: usize, forward: bool);
 
+    /// add value to number of base covered
+    fn add_covered_base(&mut self, value: usize);
+
     /// return number of match in MachedCount
     fn match_count(&self) -> usize;
 
@@ -48,7 +51,7 @@ impl fmt::Display for MachedCount {
             f,
             " {} {}",
             self.count,
-            round(self.percent_shared_kmers(), 5)
+            round(self.percent_shared_kmers(), 5),
         )
     }
 }
@@ -65,6 +68,8 @@ impl MatchedSequence for MachedCount {
     fn add_match(&mut self, _position: usize, _forward: bool) {
         self.count += 1;
     }
+
+    fn add_covered_base(&mut self, _value: usize) {}
 
     /// return number of mapped_position
     fn mapped_position_size(&self) -> usize {
@@ -84,6 +89,9 @@ pub struct MatchedSequencePositional {
     /// Position of the matched kmers in the read
     /// the boolean indicates if the kmer was mapped in the forward or reverse strand
     pub matched_positions: Vec<(usize, bool)>,
+
+    /// number of covered_base
+    pub covered_base: usize,
 }
 
 impl MatchedSequence for MatchedSequencePositional {
@@ -91,11 +99,16 @@ impl MatchedSequence for MatchedSequencePositional {
         MatchedSequencePositional {
             mapped_position_size,
             matched_positions: Vec::new(),
+            covered_base: 0,
         }
     }
 
     fn add_match(&mut self, position: usize, forward: bool) {
         self.matched_positions.push((position, forward));
+    }
+
+    fn add_covered_base(&mut self, value: usize) {
+        self.covered_base += value;
     }
 
     fn match_count(&self) -> usize {
@@ -128,7 +141,9 @@ impl fmt::Display for MatchedSequencePositional {
         }
 
         // Join all parts with spaces
-        write!(f, " {}", parts.join(" "))
+        write!(f, " {}", parts.join(" "))?;
+
+        write!(f, " ({})", self.covered_base)
     }
 }
 
@@ -153,9 +168,13 @@ mod tests {
         let sequence = b"ACGTGACTACGGCATAGCATCGTAGCTGATGTGTCAGCTGTCAGTCA";
         let mut mc = MatchedSequencePositional::new(sequence.len() - kmer_size + 1);
         mc.add_match(4, true);
+        mc.add_covered_base(1);
         mc.add_match(5, false);
+        mc.add_covered_base(1);
         mc.add_match(6, false);
+        mc.add_covered_base(1);
+        mc.add_covered_base(kmer_size - 1);
 
-        assert_eq!(mc.to_string(), " 3 6.97674 4 -5 -6");
+        assert_eq!(mc.to_string(), " 3 6.97674 4 -5 -6 (7)");
     }
 }
