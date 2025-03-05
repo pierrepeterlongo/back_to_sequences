@@ -63,3 +63,5 @@
     * Outputs the total number of nucleotides in reads
     * Outputs the total number of kmers in reads
     * Outputs the number of matches of input kmers in the reads
+0.7.1 05/03/2025 
+    * Bug fixe for kmer count

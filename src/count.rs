@@ -154,6 +154,7 @@ where
 
             for (read_id, record, nb_shared_kmers) in &mut chunk.records {
                 tt_nt += record.seq().len();
+                tt_kmer += record.seq().len() - kmer_size + 1;
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
@@ -167,7 +168,6 @@ where
                     map_both_strands,
                 );
 
-                tt_kmer += proxy_shared_kmers.mapped_position_size();
                 match_kmer += proxy_shared_kmers.match_count();
 
                 *nb_shared_kmers = Some(proxy_shared_kmers);
@@ -249,6 +249,7 @@ where
 
             for (read_id, record, nb_shared_kmers) in &mut chunk.records {
                 tt_nt += record.seq().len();
+                tt_kmer += record.seq().len() - kmer_size + 1;
                 record.upper();
                 if query_reverse {
                     record.rev_comp(); // reverse the sequence in place
@@ -261,8 +262,6 @@ where
                     stranded,
                     false, // in this case we map only the kmer or its reverse complement not both
                 );
-
-                tt_kmer += proxy_shared_kmers.mapped_position_size();
                 match_kmer += proxy_shared_kmers.match_count();
 
                 *nb_shared_kmers = Some(proxy_shared_kmers);
