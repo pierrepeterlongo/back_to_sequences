@@ -31,15 +31,16 @@ rayon            = { version = "1" }
 ahash            = { version = "0.8" }
 atomic-counter   = { version = "1" }
 auto_enums       = { version = "0.8" }
-ctor             = { version = "0.3" }
+ctor             = { version = "0.4" }
 entropy	         = { version = "0.4"}
 integer-encoding = { version = "4" }
+bloom			 = { version = "0.3.2" }
 
 
 [dev-dependencies]
 assert_cmd      = { version = "2"}
 biotest         = { version = "0.2", features = ["fasta", "fastq", "sequence"] }
-rand            = { version = "0.8" }
+rand            = { version = "0.9" }
 tempfile        = { version = "3" }
 
 [profile.release]

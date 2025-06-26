@@ -16,6 +16,8 @@ use rayon::prelude::*;
 use crate::kmer_counter::KmerCounter;
 use crate::matched_sequences::MatchedSequence;
 use crate::sequence_normalizer::SequenceNormalizer;
+use crate::kmer_prefiltration::KmerPrefiltration;
+
 
 /// Reverse complement a sequence in place.
 pub fn rev_comp(seq: &mut [u8]) {
@@ -38,6 +40,7 @@ pub fn rev_comp(seq: &mut [u8]) {
 pub fn kmers_in_fasta_file_par<T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
+    prefilter: &KmerPrefiltration,
     kmer_size: usize,
     out_fasta: String,
     min_threshold: f32,
@@ -161,6 +164,7 @@ where
                 }
                 let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
+                    prefilter,
                     record.seq(),
                     *read_id,
                     kmer_size,
@@ -194,6 +198,7 @@ where
 pub fn only_kmers_in_fasta_file_par<T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
+    prefilter: &KmerPrefiltration,
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
@@ -256,6 +261,7 @@ where
                 }
                 let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
+                    prefilter,
                     record.seq(),
                     *read_id,
                     kmer_size,
@@ -282,6 +288,7 @@ where
 /// count the number of indexed kmers in a given read
 pub fn shared_kmers_par<C, D>(
     kmer_set: &HashMap<Vec<u8>, C>,
+    prefilter: &KmerPrefiltration,
     read: &[u8],
     read_id: usize,
     kmer_size: usize,
@@ -310,23 +317,25 @@ where
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(canonical_kmer);
-            if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
-                result.add_match(i, sequence_normalizer.is_raw());
-                if first_uncovered_position < i {
-                    result.add_covered_base(kmer_size);
-                }
-                else {
-                    result.add_covered_base(kmer_size + i - first_uncovered_position);
-                }
-                first_uncovered_position = i + kmer_size;
 
+            if prefilter.contains(canonical_kmer) {
+                if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
+                    result.add_match(i, sequence_normalizer.is_raw());
+                    if first_uncovered_position < i {
+                        result.add_covered_base(kmer_size);
+                    }
+                    else {
+                        result.add_covered_base(kmer_size + i - first_uncovered_position);
+                    }
+                    first_uncovered_position = i + kmer_size;
 
-                kmer_counter.add_match(crate::kmer_counter::KmerMatch {
-                    id_read: (read_id),
-                    position: (i),
-                    forward: (sequence_normalizer.is_raw()),
-                });
-            } 
+                    kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                        id_read: (read_id),
+                        position: (i),
+                        forward: (sequence_normalizer.is_raw()),
+                    });
+                }
+            }
         }
         result
     } else {
@@ -341,30 +350,14 @@ where
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(normalizer_kmer);
 
-
-            if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
-                result.add_match(i, true);
-                kmer_counter.add_match(crate::kmer_counter::KmerMatch {
-                    id_read: (read_id),
-                    position: (i),
-                    forward: true,
-                });
-                if first_uncovered_position < i {
-                    result.add_covered_base(kmer_size);
-                }
-                else {
-                    result.add_covered_base(kmer_size + i - first_uncovered_position);
-                }
-                first_uncovered_position = i + kmer_size;
-            } else {
-                // forward did not match, we try the reverse one
-                rev_comp(normalizer_kmer);
+            
+            if prefilter.contains(normalizer_kmer) {
                 if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
-                    result.add_match(i, false);
+                    result.add_match(i, true);
                     kmer_counter.add_match(crate::kmer_counter::KmerMatch {
                         id_read: (read_id),
                         position: (i),
-                        forward: false,
+                        forward: true,
                     });
                     if first_uncovered_position < i {
                         result.add_covered_base(kmer_size);
@@ -373,7 +366,48 @@ where
                         result.add_covered_base(kmer_size + i - first_uncovered_position);
                     }
                     first_uncovered_position = i + kmer_size;
-                }   
+                } else {
+                    // forward did not match, we try the reverse one
+                    rev_comp(normalizer_kmer);
+                    
+                    if prefilter.contains(normalizer_kmer) {
+                        if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
+                            result.add_match(i, false);
+                            kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                                id_read: (read_id),
+                                position: (i),
+                                forward: false,
+                            });
+                            if first_uncovered_position < i {
+                                result.add_covered_base(kmer_size);
+                            }
+                            else {
+                                result.add_covered_base(kmer_size + i - first_uncovered_position);
+                            }
+                            first_uncovered_position = i + kmer_size;
+                        }
+                    }
+                }
+            } else {
+                // forward did not match, we try the reverse one
+                rev_comp(normalizer_kmer);
+                if prefilter.contains(normalizer_kmer) {
+                    if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
+                        result.add_match(i, false);
+                        kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                            id_read: (read_id),
+                            position: (i),
+                            forward: false,
+                        });
+                        if first_uncovered_position < i {
+                            result.add_covered_base(kmer_size);
+                        }
+                        else {
+                            result.add_covered_base(kmer_size + i - first_uncovered_position);
+                        }
+                        first_uncovered_position = i + kmer_size;
+                    }
+                }
             }
         }
         result
@@ -426,9 +460,16 @@ mod tests {
             false,
         )?;
 
+        let prefilter = KmerPrefiltration::from_kmer_set(
+            kmer_set_cano.keys().cloned().collect::<Vec<_>>().as_slice(),
+            0.1,
+            15,
+        );
+
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_cano,
+                &prefilter,
                 &sequence,
                 42,
                 kmer_size,
@@ -445,6 +486,7 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_cano,
+                &prefilter,
                 &random_sequence,
                 42,
                 kmer_size,
@@ -460,6 +502,7 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_cano,
+                &prefilter,
                 &to_small_sequence,
                 42,
                 kmer_size,
@@ -480,6 +523,7 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_both,
+                &prefilter,
                 &sequence,
                 42,
                 kmer_size,
@@ -495,6 +539,7 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_both,
+                &prefilter,
                 &sequence,
                 42,
                 kmer_size,

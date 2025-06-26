@@ -19,11 +19,18 @@ pub mod kmer_counter;
 pub mod kmer_hash;
 pub mod matched_sequences;
 pub mod sequence_normalizer;
+/// Module for kmer prefiltration functionality.
+pub mod kmer_prefiltration;
 
 /* project use */
 use file_parsing::read_file_lines;
 
-use crate::kmer_counter::KmerCounter;
+use crate::{kmer_counter::KmerCounter, kmer_prefiltration::KmerPrefiltration};
+
+
+/* constants */
+const BLOOM_FILTER_WSIZE: usize = 15;
+const BLOOM_FILTER_FALSE_POSITIVE_RATE: f32 = 0.1;
 
 /// Extract sequences that contain some kmers
 ///
@@ -54,6 +61,13 @@ pub fn back_to_sequences<T: KmerCounter>(
         kmer_hash::index_kmers::<T>(in_fasta_kmers, kmer_size, stranded, no_low_complexity)
             .context("Error indexing kmers: ")?;
 
+    let prefilter = KmerPrefiltration::from_kmer_set(
+        kmer_set.keys().cloned().collect::<Vec<_>>().as_slice(),
+        BLOOM_FILTER_FALSE_POSITIVE_RATE,
+        BLOOM_FILTER_WSIZE,
+    );
+
+
     if !out_fasta_reads.is_empty() {
         // if an output file is provided, we output the sequences that contain the kmers
         if output_mapping_positions {
@@ -62,6 +76,7 @@ pub fn back_to_sequences<T: KmerCounter>(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
                     in_fasta_reads,
                     &kmer_set,
+                    &prefilter,
                     kmer_size,
                     out_fasta_reads.clone(),
                     min_threshold,
@@ -90,6 +105,7 @@ pub fn back_to_sequences<T: KmerCounter>(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                     in_fasta_reads,
                     &kmer_set,
+                    &prefilter,
                     kmer_size,
                     out_fasta_reads.clone(),
                     min_threshold,
@@ -121,6 +137,7 @@ pub fn back_to_sequences<T: KmerCounter>(
             count::only_kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                 in_fasta_reads,
                 &kmer_set,
+                &prefilter,
                 kmer_size,
                 stranded,
                 query_reverse,
@@ -209,6 +226,13 @@ pub fn back_to_multiple_sequences(
     )
     .context("Error indexing kmers")?;
 
+    let prefilter = KmerPrefiltration::from_kmer_set(
+        kmer_set.keys().cloned().collect::<Vec<_>>().as_slice(),
+        BLOOM_FILTER_FALSE_POSITIVE_RATE,
+        BLOOM_FILTER_WSIZE,
+    );
+
+
     if output_mapping_positions {
         // if output_mapping_positions is true, we output the kmers with their count and mapping positions
         for (in_f, out_f) in input_files.iter().zip(output_files.iter()) {
@@ -216,6 +240,7 @@ pub fn back_to_multiple_sequences(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
                     in_f.to_string(),
                     &kmer_set,
+                    &prefilter,
                     kmer_size,
                     out_f.clone().to_string(),
                     min_threshold,
@@ -246,6 +271,7 @@ pub fn back_to_multiple_sequences(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                     in_f.to_string(),
                     &kmer_set,
+                    &prefilter,
                     kmer_size,
                     out_f.clone().to_string(),
                     min_threshold,

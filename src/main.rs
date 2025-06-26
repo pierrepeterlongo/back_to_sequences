@@ -12,6 +12,7 @@ use back_to_sequences::back_to_multiple_sequences;
 use back_to_sequences::back_to_sequences;
 use back_to_sequences::cli::Args;
 use back_to_sequences::kmer_counter::KmerCounterWithLog;
+use back_to_sequences::kmer_prefiltration::KmerPrefiltration;
 
 ///////////////////////// MAIN /////////////////////////
 

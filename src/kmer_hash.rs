@@ -8,7 +8,7 @@ use entropy::shannon_entropy;
 use fxread::initialize_reader;
 
 /* project use */
-use crate::{kmer_counter::KmerCounter, sequence_normalizer::SequenceNormalizer};
+use crate::{kmer_counter::KmerCounter, sequence_normalizer::SequenceNormalizer, kmer_prefiltration::KmerPrefiltration};
 
 /// given a kmer as a &[u8] return a tuple boolean, position
 /// if the kmer contains an non ACGT letter, return false and the position of the first non ACGT letter
