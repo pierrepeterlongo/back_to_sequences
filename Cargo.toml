@@ -34,7 +34,10 @@ auto_enums       = { version = "0.8" }
 ctor             = { version = "0.4" }
 entropy	         = { version = "0.4"}
 integer-encoding = { version = "4" }
-bloom			 = { version = "0.3.2" }
+
+# Filter kmers before hashing
+fastbloom 		 = { version = "0.12.0" }
+minimizer-iter   = { version = "1.2.1" }
 
 
 [dev-dependencies]
