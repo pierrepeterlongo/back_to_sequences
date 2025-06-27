@@ -29,8 +29,8 @@ use crate::{kmer_counter::KmerCounter, kmer_prefiltration::KmerPrefiltration};
 
 
 /* constants */
-const BLOOM_FILTER_WSIZE: usize = 15;
-const BLOOM_FILTER_FALSE_POSITIVE_RATE: f32 = 0.1;
+const MSIZE: u16 = 15;
+const BLOOM_FILTER_FALSE_POSITIVE_RATE: f32 = 0.01;
 
 /// Extract sequences that contain some kmers
 ///
@@ -64,7 +64,8 @@ pub fn back_to_sequences<T: KmerCounter>(
     let prefilter = KmerPrefiltration::from_kmer_set(
         kmer_set.keys().cloned().collect::<Vec<_>>().as_slice(),
         BLOOM_FILTER_FALSE_POSITIVE_RATE,
-        BLOOM_FILTER_WSIZE,
+        kmer_size,
+        MSIZE,
     );
 
 
@@ -229,7 +230,8 @@ pub fn back_to_multiple_sequences(
     let prefilter = KmerPrefiltration::from_kmer_set(
         kmer_set.keys().cloned().collect::<Vec<_>>().as_slice(),
         BLOOM_FILTER_FALSE_POSITIVE_RATE,
-        BLOOM_FILTER_WSIZE,
+        kmer_size,
+        MSIZE,
     );
 
 
