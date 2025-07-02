@@ -18,7 +18,6 @@ use crate::matched_sequences::MatchedSequence;
 use crate::sequence_normalizer::SequenceNormalizer;
 use crate::kmer_prefiltration::KmerPrefiltration;
 
-
 /// Reverse complement a sequence in place.
 pub fn rev_comp(seq: &mut [u8]) {
     // Reverse the sequence
@@ -312,30 +311,29 @@ where
         let canonical_kmer = buf.as_mut_slice();
         // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
         let mut first_uncovered_position = 0;
-
-        for i in 0..(read.len() - kmer_size + 1) {
+        
+        let positions_worse_to_test = prefilter.potiential_kmer_positions(&read);
+        for i in positions_worse_to_test {
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(canonical_kmer);
-
-            if prefilter.contains(canonical_kmer) {
-                if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
-                    result.add_match(i, sequence_normalizer.is_raw());
-                    if first_uncovered_position < i {
-                        result.add_covered_base(kmer_size);
-                    }
-                    else {
-                        result.add_covered_base(kmer_size + i - first_uncovered_position);
-                    }
-                    first_uncovered_position = i + kmer_size;
-
-                    kmer_counter.add_match(crate::kmer_counter::KmerMatch {
-                        id_read: (read_id),
-                        position: (i),
-                        forward: (sequence_normalizer.is_raw()),
-                    });
+            if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
+                result.add_match(i, sequence_normalizer.is_raw());
+                if first_uncovered_position < i {
+                    result.add_covered_base(kmer_size);
                 }
-            }
+                else {
+                    result.add_covered_base(kmer_size + i - first_uncovered_position);
+                }
+                first_uncovered_position = i + kmer_size;
+
+
+                kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                    id_read: (read_id),
+                    position: (i),
+                    forward: (sequence_normalizer.is_raw()),
+                });
+            } 
         }
         result
     } else {
@@ -344,20 +342,36 @@ where
         let normalizer_kmer = buf.as_mut_slice();
         // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
         let mut first_uncovered_position = 0;
-
-        for i in 0..(read.len() - kmer_size + 1) {
+        let positions_worse_to_test = prefilter.potiential_kmer_positions(&read);
+        for i in positions_worse_to_test {
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(normalizer_kmer);
 
-            
-            if prefilter.contains(normalizer_kmer) {
+
+            if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
+                result.add_match(i, true);
+                kmer_counter.add_match(crate::kmer_counter::KmerMatch {
+                    id_read: (read_id),
+                    position: (i),
+                    forward: true,
+                });
+                if first_uncovered_position < i {
+                    result.add_covered_base(kmer_size);
+                }
+                else {
+                    result.add_covered_base(kmer_size + i - first_uncovered_position);
+                }
+                first_uncovered_position = i + kmer_size;
+            } else {
+                // forward did not match, we try the reverse one
+                rev_comp(normalizer_kmer);
                 if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
-                    result.add_match(i, true);
+                    result.add_match(i, false);
                     kmer_counter.add_match(crate::kmer_counter::KmerMatch {
                         id_read: (read_id),
                         position: (i),
-                        forward: true,
+                        forward: false,
                     });
                     if first_uncovered_position < i {
                         result.add_covered_base(kmer_size);
@@ -366,48 +380,7 @@ where
                         result.add_covered_base(kmer_size + i - first_uncovered_position);
                     }
                     first_uncovered_position = i + kmer_size;
-                } else {
-                    // forward did not match, we try the reverse one
-                    rev_comp(normalizer_kmer);
-                    
-                    if prefilter.contains(normalizer_kmer) {
-                        if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
-                            result.add_match(i, false);
-                            kmer_counter.add_match(crate::kmer_counter::KmerMatch {
-                                id_read: (read_id),
-                                position: (i),
-                                forward: false,
-                            });
-                            if first_uncovered_position < i {
-                                result.add_covered_base(kmer_size);
-                            }
-                            else {
-                                result.add_covered_base(kmer_size + i - first_uncovered_position);
-                            }
-                            first_uncovered_position = i + kmer_size;
-                        }
-                    }
-                }
-            } else {
-                // forward did not match, we try the reverse one
-                rev_comp(normalizer_kmer);
-                if prefilter.contains(normalizer_kmer) {
-                    if let Some(kmer_counter) = kmer_set.get(normalizer_kmer) {
-                        result.add_match(i, false);
-                        kmer_counter.add_match(crate::kmer_counter::KmerMatch {
-                            id_read: (read_id),
-                            position: (i),
-                            forward: false,
-                        });
-                        if first_uncovered_position < i {
-                            result.add_covered_base(kmer_size);
-                        }
-                        else {
-                            result.add_covered_base(kmer_size + i - first_uncovered_position);
-                        }
-                        first_uncovered_position = i + kmer_size;
-                    }
-                }
+                }   
             }
         }
         result
@@ -459,13 +432,12 @@ mod tests {
             false,
             false,
         )?;
-
         let prefilter = KmerPrefiltration::from_kmer_set(
             kmer_set_cano.keys().cloned().collect::<Vec<_>>().as_slice(),
             0.1,
             15,
+            11,
         );
-
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_cano,

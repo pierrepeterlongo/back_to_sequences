@@ -29,7 +29,7 @@ use crate::{kmer_counter::KmerCounter, kmer_prefiltration::KmerPrefiltration};
 
 
 /* constants */
-const MSIZE: u16 = 15;
+const MSIZE: usize = 19;
 const BLOOM_FILTER_FALSE_POSITIVE_RATE: f32 = 0.01;
 
 /// Extract sequences that contain some kmers
@@ -61,13 +61,15 @@ pub fn back_to_sequences<T: KmerCounter>(
         kmer_hash::index_kmers::<T>(in_fasta_kmers, kmer_size, stranded, no_low_complexity)
             .context("Error indexing kmers: ")?;
 
+    let kmer_keys: Vec<Vec<u8>> = kmer_set.keys().cloned().collect();
     let prefilter = KmerPrefiltration::from_kmer_set(
-        kmer_set.keys().cloned().collect::<Vec<_>>().as_slice(),
+        &kmer_keys,
         BLOOM_FILTER_FALSE_POSITIVE_RATE,
         kmer_size,
         MSIZE,
     );
 
+    
 
     if !out_fasta_reads.is_empty() {
         // if an output file is provided, we output the sequences that contain the kmers

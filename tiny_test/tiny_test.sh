@@ -16,15 +16,30 @@
 # cat sequence.fa| back_to_sequences --in-kmers rc_kmer.fa --out-sequences filtered_with_mapping_position_rc_ref.fa  --output-mapping-positions --stranded
 
 
-back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads.fasta > /dev/null
-back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_0_1.fasta --min-threshold 0 --max-threshold 1 > /dev/null
-back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_0_10.fasta --min-threshold 0 --max-threshold 10 > /dev/null
-back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_0_100.fasta --min-threshold 5 --max-threshold 100 > /dev/null
-back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_stranded.fasta --stranded > /dev/null
-back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_stranded_qreverse.fasta --stranded --query-reverse > /dev/null
-back_to_sequences --in-sequences sequence.fa --in-kmers lower_kmer.fa --out-sequences filtered_reads_lower.fasta > /dev/null
-back_to_sequences --in-sequences sequence.fa --in-kmers lower_kmers_N.fa --out-sequences filtered_reads_lowerN.fasta > /dev/null
-
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads.fasta" > /dev/null
+echo running $cmd 
+$cmd > /dev/null
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_0_1.fasta --min-threshold 0 --max-threshold 1"
+echo running $cmd 
+$cmd > /dev/null
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_0_10.fasta --min-threshold 0 --max-threshold 10"
+echo running $cmd 
+$cmd > /dev/null
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_0_100.fasta --min-threshold 5 --max-threshold 100"
+echo running $cmd 
+$cmd > /dev/null
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_stranded.fasta --stranded"
+echo running $cmd 
+$cmd > /dev/null
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers one_kmer.fa --out-sequences filtered_reads_stranded_qreverse.fasta --stranded --query-reverse"
+echo running $cmd 
+$cmd > /dev/null
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers lower_kmer.fa --out-sequences filtered_reads_lower.fasta"
+echo running $cmd 
+$cmd > /dev/null
+cmd="back_to_sequences --in-sequences sequence.fa --in-kmers lower_kmers_N.fa --out-sequences filtered_reads_lowerN.fasta"
+echo running $cmd 
+$cmd > /dev/null
 
 diff filtered_reads.fasta filtered_reads_ref.fasta
 if [ $? -ne 0 ]; then

@@ -12,11 +12,29 @@ use back_to_sequences::back_to_multiple_sequences;
 use back_to_sequences::back_to_sequences;
 use back_to_sequences::cli::Args;
 use back_to_sequences::kmer_counter::KmerCounterWithLog;
-use back_to_sequences::kmer_prefiltration::KmerPrefiltration;
+
 
 ///////////////////////// MAIN /////////////////////////
 
 fn main() -> anyhow::Result<()> {
+       
+
+// Build an iterator over minimizers
+// of size 3 with a window of size 4
+// for the sequence "TGATTGCACAATC"
+
+// use minimizer_iter::MinimizerBuilder;
+// let min_iter = MinimizerBuilder::<u64>::new()
+//     .canonical()
+//     .minimizer_size(19)
+//     .width(13)
+//     .iter(b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT");
+
+// for (minimizer, position, is_forward) in min_iter {
+//     println!("minimizer {}, position {}, is_forward {}", minimizer, position, is_forward);
+// }
+//     return Ok(());
+
     let args = Args::parse();
 
     // Set the number of threads for rayon
