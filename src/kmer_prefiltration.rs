@@ -85,6 +85,7 @@ impl KmerPrefiltration {
     /// Inserts a kmer into the bloom filter.
     fn insert(&mut self, kmer: &[u8]) {
         self.bloom_filter.insert(&self.kmer_to_minimizer(kmer));
+        println!("inserted minimizer {} of kmer {} in the bf", &self.kmer_to_minimizer(kmer), String::from_utf8(kmer.to_vec()).unwrap());
     }
 
     /// Insert all minimizers from a kmer set into the bloom filter.
@@ -117,7 +118,13 @@ impl KmerPrefiltration {
         // (current_minimizer, current_minimizer_position) = first couple 
         // is_current_minimizer_valid = is current_minimizer in bf
         // (next_minimizer, next_minimizer_position) = second couple 
-        // for i from 0 to len sequence - k (included) :
+        // Note: there is a special case for the initialization, 
+        // First kmers from 0 to second minimizer position are related to first minimizer.
+        // for i from 0 to current_minimizer_position (included)
+        //     if is_current_minimizer_valid:
+        //           add i to return values
+        //     
+        // for i from current_minimizer_position+1 to len sequence - k (included) :
         //     if i >= next_minimizer_position - k + m: // we change the minimizer: 
         //           (current_minimizer, current_minimizer_position) = (next_minimizer, next_minimizer_position)
         //           is_current_minimizer_valid = is current_minimizer in bf
@@ -126,15 +133,24 @@ impl KmerPrefiltration {
         //     if is_current_minimizer_valid:
         //           add i to return values
         
-        let shift_shortcut = self.k - self.msize; // shortcut
         let  (mut current_minimizer, mut current_minimizer_position, _forward) = 
             min_iter.next().unwrap_or((0 as u64, sequence.len(), false));
+        println!("First minimimiser position: {}", current_minimizer_position);
         let mut is_current_minimizer_valid = self.bloom_filter.contains(&current_minimizer);
         let (mut next_minimizer, mut next_minimizer_position, mut _forward) = min_iter.next().unwrap_or((0 as u64, sequence.len(), false)); // in case we have no more minimizer, we consider the last minimizer as occurring at sequence length. This fills all kmers. 
-        for i in 0..sequence.len() - self.k + 1usize {
-                        // TODO: hugly : I'd like to make only one comparison.
-            // if next_minimizer_position - shift_shortcut is negative,  sustraction creates huge positive result 
-            if i as isize >= (next_minimizer_position - shift_shortcut) as isize {
+        for i in 0..current_minimizer_position+1{
+            if is_current_minimizer_valid {
+                returned_positions.push(i);
+                println!("from first kmers, kmer {:?} pos {} minimizer {} is conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
+            }
+            else {
+                println!("from first kmers,kmer {:?} pos {} minimizer {} is NOT conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
+            }
+        }
+
+        for i in current_minimizer_position+1..sequence.len() - self.k + 1usize {
+            if i as isize > (next_minimizer_position - self.wsize) as isize {
+                println!("changing minimizer i {} next_minimizer_position {}", i, next_minimizer_position);
                 current_minimizer = next_minimizer; // moved value
                 is_current_minimizer_valid = self.bloom_filter.contains(&current_minimizer);
                 current_minimizer_position = next_minimizer_position;
@@ -142,55 +158,22 @@ impl KmerPrefiltration {
                 // new minimizer should not be at a lower position than previous one.
                 assert!(current_minimizer_position < next_minimizer_position); 
             }
+            assert!(self.kmer_to_minimizer(&sequence[i..i+self.k]) == current_minimizer, 
+                "wrong kmer minimizer kmer {:?} pos {} real minimizer {}, current_minimizer {}", 
+                str::from_utf8(&sequence[i..i+self.k]), 
+                i, 
+                &self.kmer_to_minimizer(&sequence[i..i+self.k]),
+                current_minimizer); //TO REMOVE
             if is_current_minimizer_valid {
                 returned_positions.push(i);
+                println!("kmer {:?} pos {} minimizer {} is conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
+            }
+            else {
+                println!("kmer {:?} pos {} minimizer {} is NOT conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
             }
         }
 
 
-        // // no need to store this vector, we can simply iterate over minimizer positions
-        // let  (mut current_minimizer, mut current_minimizer_position, _forward) = min_iter.next().unwrap();
-        // let mut current_minimizer_in_bf = self.bloom_filter.contains(&current_minimizer);
-        // let mut next_iterator = min_iter.next();
-        // let (mut next_minimizer, mut next_minimizer_position) = if let Some((min, pos, _forward)) = next_iterator {
-        //     (Some(min), Some(pos))
-        // } else {
-        //     (None, None)
-        // };
-        // // TODO: l'algo est faux...
-        // let mut current_position = 0;
-        // loop {
-        //     //DEBUG
-        //     println!("Current minimizer: {}, position: {}, in bloom filter: {}", current_minimizer, current_minimizer_position, current_minimizer_in_bf);
-        //     if current_minimizer_in_bf {
-        //         // fill from current_position to min(current_minimizer_position +1, len(sequence) - k )
-        //         let end_position = current_minimizer_position.min(sequence.len() - self.k);
-        //         // if current_position is already past end_position, we can skip
-        //         for  position in current_position..end_position + 1 {
-        //             returned_positions.push(position);
-        //         }
-        //     }
-        //     // if next minimizer is not defined, we can stop
-        //     if next_minimizer_position == None{
-        //         break;
-        //     }
-
-
-        //     // update current and next minimizer for next loop 
-        //     current_minimizer = next_minimizer.unwrap();
-        //     current_minimizer_position = next_minimizer_position.unwrap();
-        //     current_minimizer_in_bf = self.bloom_filter.contains(&current_minimizer);
-        //     current_position = current_minimizer_position - self.msize as usize + self.k;
-
-        //     next_iterator = min_iter.next();
-        //     if let Some((min, pos, _forward)) = next_iterator {
-        //         next_minimizer = Some(min);
-        //         next_minimizer_position = Some(pos);
-        //     } else {
-        //         next_minimizer = None;
-        //         next_minimizer_position = None;
-        //     }
-        // }
         returned_positions
     }
 

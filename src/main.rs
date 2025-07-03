@@ -19,21 +19,17 @@ use back_to_sequences::kmer_counter::KmerCounterWithLog;
 fn main() -> anyhow::Result<()> {
        
 
-// Build an iterator over minimizers
-// of size 3 with a window of size 4
-// for the sequence "TGATTGCACAATC"
+    // This piece of codes shows an unexpected behavior with minimizer_iter. See https://github.com/rust-seq/minimizer-iter/issues/4
+    // use minimizer_iter::MinimizerBuilder;
+    // let min_iter = MinimizerBuilder::<u64>::new()
+    //     .minimizer_size(19)
+    //     .width(13) // k = w+m-1 = 31
+    //     .iter(b"GGTACATACCCTGTGGGAAGACTTACGTAAAACGCTTCCAGAGATCGGAGC"); 
 
-// use minimizer_iter::MinimizerBuilder;
-// let min_iter = MinimizerBuilder::<u64>::new()
-//     .canonical()
-//     .minimizer_size(19)
-//     .width(13)
-//     .iter(b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT");
-
-// for (minimizer, position, is_forward) in min_iter {
-//     println!("minimizer {}, position {}, is_forward {}", minimizer, position, is_forward);
-// }
-//     return Ok(());
+    // for (minimizer, position) in min_iter {
+    //     println!("minimizer {}, position {}", minimizer, position);
+    // }
+    // return Ok(());
 
     let args = Args::parse();
 

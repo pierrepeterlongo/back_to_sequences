@@ -313,11 +313,17 @@ where
         let mut first_uncovered_position = 0;
         
         let positions_worse_to_test = prefilter.potiential_kmer_positions(&read);
-        for i in positions_worse_to_test {
+        // for i in positions_worse_to_test { // OPTIMIZED
+        for i in 0..read.len()-kmer_size+1 { // NOT OPTIMIZED
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(canonical_kmer);
             if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
+                ///// DBUG START ///////
+                if !positions_worse_to_test.contains(&i) {
+                    panic!("kmer {:?}, pos {} is in the read but not in the positions worse to test", str::from_utf8(kmer), i);
+                }
+                ///// DBUG ENDS ////////
                 result.add_match(i, sequence_normalizer.is_raw());
                 if first_uncovered_position < i {
                     result.add_covered_base(kmer_size);
