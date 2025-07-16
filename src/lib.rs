@@ -69,7 +69,7 @@ pub fn back_to_sequences<T: KmerCounter>(
         MSIZE,
     );
 
-    
+    println!("Starting to count kmers in the reads from file: {}", in_fasta_reads);
 
     if !out_fasta_reads.is_empty() {
         // if an output file is provided, we output the sequences that contain the kmers

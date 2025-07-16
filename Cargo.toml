@@ -28,23 +28,24 @@ fxread           = { version = "0.2" }
 rayon            = { version = "1" }
 
 # Other
-ahash            = { version = "0.8" }
+ahash            = { version = "0.8.12" }
 atomic-counter   = { version = "1" }
-auto_enums       = { version = "0.8" }
+auto_enums       = { version = "0.8.7" }
 ctor             = { version = "0.4" }
 entropy	         = { version = "0.4"}
-integer-encoding = { version = "4" }
+integer-encoding = { version = "4.0.2" }
 
 # Filter kmers before hashing
-fastbloom 		 = { version = "0.12.0" }
-minimizer-iter   = { version = "1.2.1" }
+fastbloom 		 = { version = "0.12.1" }
+simd-minimizers  = { version = "1.2.0", features = ["hide-simd-warning"] }
+packed-seq		 = { version = "3.0.1" }
 
 
 [dev-dependencies]
-assert_cmd      = { version = "2"}
+assert_cmd      = { version = "2.0.17"}
 biotest         = { version = "0.2", features = ["fasta", "fastq", "sequence"] }
 rand            = { version = "0.9" }
-tempfile        = { version = "3" }
+tempfile        = { version = "3.20.0" }
 
 [profile.release]
 lto = 'thin'

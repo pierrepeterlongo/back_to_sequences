@@ -1,6 +1,20 @@
 use fastbloom::BloomFilter;
 use std::f64::consts::LN_2;
-use minimizer_iter::MinimizerBuilder;
+use simd_minimizers;
+use packed_seq::{PackedSeqVec, SeqVec};
+
+fn replace_non_acgt(input: &[u8]) -> Vec<u8> {
+    input
+        .iter()
+        .map(|&c| {
+            match c {
+                b'A' | b'C' | b'G' | b'T' | b'a' | b'c' | b'g' | b't' => c,
+                _ => b'A',
+            }
+        })
+        .collect()
+}
+
 
 /// kmer prefiltration. 
 /// Key ideas: 
@@ -50,6 +64,21 @@ impl KmerPrefiltration {
 
     /// Creates a new KmerPrefiltration from keys of a hashmap 
     pub fn from_kmer_set(kmer_set: &[Vec<u8>], false_positive_rate: f32, k: usize, msize: usize) -> Self {
+        
+        // DEBUG
+        // let seq = b"GAGCCGGAAGCGTGGCTGCGTAACGATCACC";
+        // let m = 19;
+        // let w = 11;
+
+        // let packed_seq = PackedSeqVec::from_ascii(seq);
+        // let mut minimizer_positions = Vec::new();
+        // simd_minimizers::canonical_minimizer_positions(packed_seq.as_slice(), m, w, &mut minimizer_positions);
+        // println!("Minimizer positions {:#?}", minimizer_positions);
+        // std::process::exit(0);
+        // let _minimizer_values: Vec<_> = simd_minimizers::iter_canonical_minimizer_values(packed_seq.as_slice(), k, &minimizer_positions).collect();
+
+        // FIN DEBUG
+
         let mut prefilter = KmerPrefiltration::new(kmer_set.len() as u32, false_positive_rate, k, msize);
         prefilter.insert_kmer_set(kmer_set);
         prefilter
@@ -58,23 +87,20 @@ impl KmerPrefiltration {
     
 
     fn kmer_to_minimizer(&self, kmer: &[u8]) -> u64 {
-        let mut min_iter = MinimizerBuilder::<u64>::new()
-            .canonical()
-            .minimizer_size(self.msize.into())
-            .width(self.wsize as u16)
-            .iter(kmer);
+        // simd_minimizers::one_canonical_minimizer(kmer, self.msize)
+        let mut minimizer_positions = Vec::new();
+        let mut superkmer_pos_vec = Vec::new();
+        let packed_seq = PackedSeqVec::from_ascii(&replace_non_acgt(kmer));
+        simd_minimizers::scalar::canonical_minimizer_and_superkmer_positions_scalar(packed_seq.as_slice(), self.msize, self.wsize, &mut minimizer_positions, &mut superkmer_pos_vec);
+        // println!("number of minimizers {} for kmer {:?}",  minimizer_positions.len(), str::from_utf8(kmer));        
+        assert!(minimizer_positions.len() == 1);
 
-
-        // check that we have exactly one minimizer
-        if let Some((minimizer, _position, _forward)) = min_iter.next() {
-            if let Some((_minimizer, _position, _forward)) = min_iter.next() {
-                // debug
-                panic!("Panic: kmer {} has more than one minimizer", String::from_utf8(kmer.to_vec()).unwrap());
-            }
-            return minimizer;
-        } else {
-            panic!("Panic: kmer {} has no minimizer", String::from_utf8(kmer.to_vec()).unwrap());
+        // println!("kmer {:?} has minimizer positions {:?}", String::from_utf8(kmer.to_vec()).unwrap(), minimizer_positions);
+        for canonical_minimizer_value in simd_minimizers::iter_canonical_minimizer_values(packed_seq.as_slice(), self.msize, &minimizer_positions){
+            // println!("kmer {:?} has minimizer value {}", String::from_utf8(kmer.to_vec()).unwrap(), canonical_minimizer_value);
+            return canonical_minimizer_value;
         }
+        0
     }
 
     /// Returns true if the kmer is in the bloom filter.
@@ -85,7 +111,7 @@ impl KmerPrefiltration {
     /// Inserts a kmer into the bloom filter.
     fn insert(&mut self, kmer: &[u8]) {
         self.bloom_filter.insert(&self.kmer_to_minimizer(kmer));
-        println!("inserted minimizer {} of kmer {} in the bf", &self.kmer_to_minimizer(kmer), String::from_utf8(kmer.to_vec()).unwrap());
+        // println!("inserted minimizer {} of kmer {} in the bf", &self.kmer_to_minimizer(kmer), String::from_utf8(kmer.to_vec()).unwrap());
     }
 
     /// Insert all minimizers from a kmer set into the bloom filter.
@@ -99,81 +125,40 @@ impl KmerPrefiltration {
     /// Given a sequence, return a vector containing kmer positions whose
     /// minimizer is in the bloom filter.
     pub fn potiential_kmer_positions(&self, sequence: &[u8]) -> Vec<usize> {
-        let mut min_iter = MinimizerBuilder::<u64, _>::new()
-            .canonical()
-            .minimizer_size(self.msize.into())
-            .width(self.wsize as u16)
-            .iter(&sequence);
+        let mut minimizer_positions = Vec::new();
+        let mut superkmer_pos_vec = Vec::new();
+        let packed_seq = PackedSeqVec::from_ascii(&replace_non_acgt(sequence));
+        simd_minimizers::scalar::canonical_minimizer_and_superkmer_positions_scalar(packed_seq.as_slice(), self.msize, self.wsize, &mut minimizer_positions, &mut superkmer_pos_vec);
+        superkmer_pos_vec.push(sequence.len() as u32); // add a dummy value to avoid out of bounds access
+        // println!("Minimizer positions: {:?} for seq {:#?}", minimizer_positions, str::from_utf8(&replace_non_acgt(sequence)));
+        // println!("Superkmer positions: {:?}", superkmer_pos_vec);
+        let last_position = (sequence.len() - self.k + 1) as u32;
 
         let mut returned_positions = Vec::new();
+        for (i, canonical_minimizer_value) in simd_minimizers::iter_canonical_minimizer_values(packed_seq.as_slice(), self.msize, &minimizer_positions).enumerate() {
+            // println!("Tested minimizer value: {}", canonical_minimizer_value);
+            // kmers from superkmer_pos_vec[i] to superkmer_pos_vec[i+1] are assigned 
+            // to minimizer canonical_minimizer_value
+            // println!("Testing {}th  minimizer value: {}", i, canonical_minimizer_value);
+            if  self.bloom_filter.contains(&canonical_minimizer_value) {
+                
+                let start = superkmer_pos_vec[i];
+                let end = std::cmp::min(
+                    std::cmp::min(
+                    superkmer_pos_vec[i] + (2 * self.k - self.msize) as u32,
+                    superkmer_pos_vec[i + 1]),
+                    last_position as u32
+                );
 
-        // We have a list of position of minimizers
-        // We need to find which kmers are assigne to each minimizer. 
-        // Isolated minimizer: Given a minimizer position p, with no other minimizer around, kmers from position 
-        // p-k+m to p are assigned to this minimizer.
-        // General case: Given a minimizer position p1 and next minimizer position p2, kmers from position
-        // p1-k+m to p2-k+m-1 are assigned to minimizer position p1. 
-        // We report only kmers whose minimizers are "valid" (in the bf). 
-        //      Here is the algo:
-        // (current_minimizer, current_minimizer_position) = first couple 
-        // is_current_minimizer_valid = is current_minimizer in bf
-        // (next_minimizer, next_minimizer_position) = second couple 
-        // Note: there is a special case for the initialization, 
-        // First kmers from 0 to second minimizer position are related to first minimizer.
-        // for i from 0 to current_minimizer_position (included)
-        //     if is_current_minimizer_valid:
-        //           add i to return values
-        //     
-        // for i from current_minimizer_position+1 to len sequence - k (included) :
-        //     if i >= next_minimizer_position - k + m: // we change the minimizer: 
-        //           (current_minimizer, current_minimizer_position) = (next_minimizer, next_minimizer_position)
-        //           is_current_minimizer_valid = is current_minimizer in bf
-        //           (next_minimizer, next_minimizer_position) = next couple 
-        //    
-        //     if is_current_minimizer_valid:
-        //           add i to return values
-        
-        let  (mut current_minimizer, mut current_minimizer_position, _forward) = 
-            min_iter.next().unwrap_or((0 as u64, sequence.len(), false));
-        println!("First minimimiser position: {}", current_minimizer_position);
-        let mut is_current_minimizer_valid = self.bloom_filter.contains(&current_minimizer);
-        let (mut next_minimizer, mut next_minimizer_position, mut _forward) = min_iter.next().unwrap_or((0 as u64, sequence.len(), false)); // in case we have no more minimizer, we consider the last minimizer as occurring at sequence length. This fills all kmers. 
-        for i in 0..current_minimizer_position+1{
-            if is_current_minimizer_valid {
-                returned_positions.push(i);
-                println!("from first kmers, kmer {:?} pos {} minimizer {} is conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
+                for p in start..end {
+                    returned_positions.push(p as usize);
+                }
+                // println!("Found {}th minimizer value: {} in the bloom filter, positions: {} to {}", i, canonical_minimizer_value, start, end);
             }
-            else {
-                println!("from first kmers,kmer {:?} pos {} minimizer {} is NOT conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
-            }
+            // else {
+            //     println!("Did not find {}th minimizer value: {} in the bloom filter", i, canonical_minimizer_value);
+            // }
         }
-
-        for i in current_minimizer_position+1..sequence.len() - self.k + 1usize {
-            if i as isize > (next_minimizer_position - self.wsize) as isize {
-                println!("changing minimizer i {} next_minimizer_position {}", i, next_minimizer_position);
-                current_minimizer = next_minimizer; // moved value
-                is_current_minimizer_valid = self.bloom_filter.contains(&current_minimizer);
-                current_minimizer_position = next_minimizer_position;
-                (next_minimizer, next_minimizer_position, _forward) = min_iter.next().unwrap_or((0 as u64, sequence.len(), false));
-                // new minimizer should not be at a lower position than previous one.
-                assert!(current_minimizer_position < next_minimizer_position); 
-            }
-            assert!(self.kmer_to_minimizer(&sequence[i..i+self.k]) == current_minimizer, 
-                "wrong kmer minimizer kmer {:?} pos {} real minimizer {}, current_minimizer {}", 
-                str::from_utf8(&sequence[i..i+self.k]), 
-                i, 
-                &self.kmer_to_minimizer(&sequence[i..i+self.k]),
-                current_minimizer); //TO REMOVE
-            if is_current_minimizer_valid {
-                returned_positions.push(i);
-                println!("kmer {:?} pos {} minimizer {} is conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
-            }
-            else {
-                println!("kmer {:?} pos {} minimizer {} is NOT conserved", str::from_utf8(&sequence[i..i+self.k]), i, current_minimizer);
-            }
-        }
-
-
         returned_positions
     }
 

@@ -17,7 +17,7 @@ use back_to_sequences::kmer_counter::KmerCounterWithLog;
 ///////////////////////// MAIN /////////////////////////
 
 fn main() -> anyhow::Result<()> {
-       
+    // env::set_var("RUST_BACKTRACE", "full"); //TODO remove this line in production
 
     // This piece of codes shows an unexpected behavior with minimizer_iter. See https://github.com/rust-seq/minimizer-iter/issues/4
     // use minimizer_iter::MinimizerBuilder;
