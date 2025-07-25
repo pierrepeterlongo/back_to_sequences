@@ -19,18 +19,11 @@ pub mod kmer_counter;
 pub mod kmer_hash;
 pub mod matched_sequences;
 pub mod sequence_normalizer;
-/// Module for kmer prefiltration functionality.
-pub mod kmer_prefiltration;
 
 /* project use */
 use file_parsing::read_file_lines;
 
-use crate::{kmer_counter::KmerCounter, kmer_prefiltration::KmerPrefiltration};
-
-
-/* constants */
-const MSIZE: usize = 17;
-const BLOOM_FILTER_FALSE_POSITIVE_RATE: f32 = 0.01;
+use crate::kmer_counter::KmerCounter;
 
 /// Extract sequences that contain some kmers
 ///
@@ -61,23 +54,6 @@ pub fn back_to_sequences<T: KmerCounter>(
         kmer_hash::index_kmers::<T>(in_fasta_kmers, kmer_size, stranded, no_low_complexity)
             .context("Error indexing kmers: ")?;
 
-    let kmer_keys: Vec<Vec<u8>> = kmer_set.keys().cloned().collect();
-    // msize cannot be bigger than k
-    let msize = 
-    if MSIZE > kmer_size {
-        kmer_size - 1
-    } else {
-        MSIZE
-    };
-    let prefilter = KmerPrefiltration::from_kmer_set(
-        &kmer_keys,
-        BLOOM_FILTER_FALSE_POSITIVE_RATE,
-        kmer_size,
-        msize,
-    );
-
-    println!("Starting to count kmers in the reads from file: {in_fasta_reads}");
-
     if !out_fasta_reads.is_empty() {
         // if an output file is provided, we output the sequences that contain the kmers
         if output_mapping_positions {
@@ -86,7 +62,6 @@ pub fn back_to_sequences<T: KmerCounter>(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
                     in_fasta_reads,
                     &kmer_set,
-                    &prefilter,
                     kmer_size,
                     out_fasta_reads.clone(),
                     min_threshold,
@@ -96,10 +71,12 @@ pub fn back_to_sequences<T: KmerCounter>(
                     true, // in this case we map both strands
                 )?;
             eprintln!(
-                "Filtered sequences with exact kmer count and mapping positions are in file {out_fasta_reads}"
+                "Filtered sequences with exact kmer count and mapping positions are in file {}",
+                out_fasta_reads
             );
             println!(
-                "Number of nucleotides seen {total_nucleotides}"
+                "Number of nucleotides seen {}",
+                total_nucleotides
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} kmer ratio {:.5}",
@@ -113,7 +90,6 @@ pub fn back_to_sequences<T: KmerCounter>(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                     in_fasta_reads,
                     &kmer_set,
-                    &prefilter,
                     kmer_size,
                     out_fasta_reads.clone(),
                     min_threshold,
@@ -123,11 +99,13 @@ pub fn back_to_sequences<T: KmerCounter>(
                     false, // in this case we do not map both strands
                 )?;
             eprintln!(
-                "Filtered sequences with exact kmer count are in file {out_fasta_reads}"
+                "Filtered sequences with exact kmer count are in file {}",
+                out_fasta_reads
             );
             
             println!(
-                "Number of nucleotides seen {total_nucleotides}"
+                "Number of nucleotides seen {}",
+                total_nucleotides
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -143,14 +121,14 @@ pub fn back_to_sequences<T: KmerCounter>(
             count::only_kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                 in_fasta_reads,
                 &kmer_set,
-                &prefilter,
                 kmer_size,
                 stranded,
                 query_reverse,
             )?;
         
         println!(
-            "Number of nucleotides seen {total_nucleotides}"
+            "Number of nucleotides seen {}",
+            total_nucleotides
         );
         println!(
             "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -175,7 +153,8 @@ pub fn back_to_sequences<T: KmerCounter>(
         .context("Error writing the kmers file")?;
 
         eprintln!(
-            "kmers with their number of occurrences in the original sequences are in file {out_txt_kmers}"
+            "kmers with their number of occurrences in the original sequences are in file {}",
+            out_txt_kmers
         );
     }
     Ok(())
@@ -209,10 +188,10 @@ pub fn back_to_multiple_sequences(
     // check that in_fasta_kmers is a non empty file:
 
     let input_files = read_file_lines(in_fasta_filenames.as_str())
-        .map_err(|e| eprintln!("Error reading file: {e}"))
+        .map_err(|e| eprintln!("Error reading file: {}", e))
         .unwrap();
     let output_files = read_file_lines(out_fasta_filenames.as_str())
-        .map_err(|e| eprintln!("Error reading file: {e}"))
+        .map_err(|e| eprintln!("Error reading file: {}", e))
         .unwrap();
 
     if input_files.len() != output_files.len() {
@@ -229,19 +208,6 @@ pub fn back_to_multiple_sequences(
         no_low_complexity,
     )
     .context("Error indexing kmers")?;
-    let msize = 
-    if MSIZE > kmer_size {
-        kmer_size - 1
-    } else {
-        MSIZE
-    };
-    let prefilter = KmerPrefiltration::from_kmer_set(
-        kmer_set.keys().cloned().collect::<Vec<_>>().as_slice(),
-        BLOOM_FILTER_FALSE_POSITIVE_RATE,
-        kmer_size,
-        msize,
-    );
-
 
     if output_mapping_positions {
         // if output_mapping_positions is true, we output the kmers with their count and mapping positions
@@ -250,7 +216,6 @@ pub fn back_to_multiple_sequences(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MatchedSequencePositional>(
                     in_f.to_string(),
                     &kmer_set,
-                    &prefilter,
                     kmer_size,
                     out_f.clone().to_string(),
                     min_threshold,
@@ -260,10 +225,12 @@ pub fn back_to_multiple_sequences(
                     true, // in this case we map both strands
                 )?;
             eprintln!(
-            "Filtered sequences from {in_f} with exact kmer count and mapping positions are in files specified at {out_f}"
+            "Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}",
+            in_f, out_f
             );
             println!(
-                "Number of nucleotides seen {total_nucleotides}",
+                "Number of nucleotides seen {}",
+                total_nucleotides
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -279,7 +246,6 @@ pub fn back_to_multiple_sequences(
                 count::kmers_in_fasta_file_par::<_, matched_sequences::MachedCount>(
                     in_f.to_string(),
                     &kmer_set,
-                    &prefilter,
                     kmer_size,
                     out_f.clone().to_string(),
                     min_threshold,
@@ -289,10 +255,12 @@ pub fn back_to_multiple_sequences(
                     false, // in this case we do not map both strands
                 )?;
             eprintln!(
-                "Filtered sequences from {in_f} with exact kmer count are in files specified at {out_f}",
+                "Filtered sequences from {} with exact kmer count are in files specified at {}",
+                in_f, out_f
             );
             println!(
-                "Number of nucleotides seen {total_nucleotides}",
+                "Number of nucleotides seen {}",
+                total_nucleotides
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -319,7 +287,8 @@ pub fn back_to_multiple_sequences(
         .context("Error writing the kmers file: {}")?;
 
         eprintln!(
-            "kmers with their number of occurrences in the original sequences are in file {out_txt_kmers}"
+            "kmers with their number of occurrences in the original sequences are in file {}",
+            out_txt_kmers
         );
     }
     Ok(())

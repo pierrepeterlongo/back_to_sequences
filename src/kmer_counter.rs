@@ -89,7 +89,7 @@ impl KmerCounter for Mutex<KmerCounterWithLog> {
         let mut result = String::new(); // Create an empty string to store the result
         for (id_read, position, stranded) in counter.iter_matches() {
             // Append the id_read, position, and stranded information to the result string. Change the format when debugged
-            result.push_str(&format!("({id_read},{position},{stranded}) "));
+            result.push_str(&format!("({},{},{}) ", id_read, position, stranded));
         }
         result // Return the result string
     }
@@ -121,7 +121,7 @@ mod tests {
             });
 
             assert_eq!(counter.get_count(), i);
-            assert_eq!(counter.to_string(), format!("{i}"));
+            assert_eq!(counter.to_string(), format!("{}", i));
         }
 
         assert_eq!(counter.get_count(), 10);

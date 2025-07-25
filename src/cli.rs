@@ -75,8 +75,7 @@ pub struct Args {
     pub output_mapping_positions: bool,
 
     /// Size of the kmers to index and search
-    /// Note: must be odd
-    #[arg(short, long, default_value_t = 31, verbatim_doc_comment)]
+    #[arg(short, long, default_value_t = 31)]
     pub kmer_size: usize,
 
     /// Output sequences are those whose ratio of indexed kmers is in ]min_threshold; max_threshold]
@@ -130,12 +129,12 @@ mod tests {
     #[test]
     fn non_empty_file_test() -> anyhow::Result<()> {
         let temp_dir = tempfile::tempdir()?;
-        let directory = temp_dir.path();
+        let directory = temp_dir.into_path();
         let file = directory.join("empty.fasta");
 
         // test directory
         assert!(
-            validate_non_empty_file(directory.to_string_lossy().to_string())
+            validate_non_empty_file(directory.clone().into_os_string().into_string().unwrap())
                 .is_err()
         );
 

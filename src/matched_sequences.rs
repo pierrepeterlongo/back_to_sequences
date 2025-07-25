@@ -136,7 +136,7 @@ impl fmt::Display for MatchedSequencePositional {
                 parts.push(position.to_string());
             } else {
                 // Avoid allocating a new string for the minus sign
-                parts.push(format!("-{position}"));
+                parts.push(format!("-{}", position));
             }
         }
 

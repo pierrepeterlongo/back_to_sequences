@@ -16,7 +16,6 @@ use rayon::prelude::*;
 use crate::kmer_counter::KmerCounter;
 use crate::matched_sequences::MatchedSequence;
 use crate::sequence_normalizer::SequenceNormalizer;
-use crate::kmer_prefiltration::KmerPrefiltration;
 
 /// Reverse complement a sequence in place.
 pub fn rev_comp(seq: &mut [u8]) {
@@ -39,7 +38,6 @@ pub fn rev_comp(seq: &mut [u8]) {
 pub fn kmers_in_fasta_file_par<T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
-    prefilter: &KmerPrefiltration,
     kmer_size: usize,
     out_fasta: String,
     min_threshold: f32,
@@ -163,7 +161,6 @@ where
                 }
                 let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
-                    prefilter,
                     record.seq(),
                     *read_id,
                     kmer_size,
@@ -197,7 +194,6 @@ where
 pub fn only_kmers_in_fasta_file_par<T, D>(
     file_name: String,
     kmer_set: &HashMap<Vec<u8>, T>,
-    prefilter: &KmerPrefiltration,
     kmer_size: usize,
     stranded: bool,
     query_reverse: bool,
@@ -260,7 +256,6 @@ where
                 }
                 let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
-                    prefilter,
                     record.seq(),
                     *read_id,
                     kmer_size,
@@ -287,7 +282,6 @@ where
 /// count the number of indexed kmers in a given read
 pub fn shared_kmers_par<C, D>(
     kmer_set: &HashMap<Vec<u8>, C>,
-    prefilter: &KmerPrefiltration,
     read: &[u8],
     read_id: usize,
     kmer_size: usize,
@@ -311,23 +305,12 @@ where
         let canonical_kmer = buf.as_mut_slice();
         // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
         let mut first_uncovered_position = 0;
-        
-        let positions_worse_to_test = prefilter.potiential_kmer_positions(read);
-        for &i in &positions_worse_to_test { // OPTIMIZED
-        // for i in 0..read.len()-kmer_size+1 { // NOT OPTIMIZED
+
+        for i in 0..(read.len() - kmer_size + 1) {
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(canonical_kmer);
             if let Some(kmer_counter) = kmer_set.get(canonical_kmer) {
-                ///// DBUG START ///////
-                // if !positions_worse_to_test.contains(&i) {
-                //     panic!("kmer {:?}, pos {} (seq len {}) is in the read but not in the positions worse to test", 
-                //     str::from_utf8(kmer), 
-                //     i, 
-                //     read.len()
-                // );
-                // }
-                ///// DBUG ENDS ////////
                 result.add_match(i, sequence_normalizer.is_raw());
                 if first_uncovered_position < i {
                     result.add_covered_base(kmer_size);
@@ -352,8 +335,8 @@ where
         let normalizer_kmer = buf.as_mut_slice();
         // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
         let mut first_uncovered_position = 0;
-        let positions_worse_to_test = prefilter.potiential_kmer_positions(read);
-        for i in positions_worse_to_test {
+
+        for i in 0..(read.len() - kmer_size + 1) {
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);
             sequence_normalizer.copy_to_slice(normalizer_kmer);
@@ -442,16 +425,10 @@ mod tests {
             false,
             false,
         )?;
-        let prefilter = KmerPrefiltration::from_kmer_set(
-            kmer_set_cano.keys().cloned().collect::<Vec<_>>().as_slice(),
-            0.1,
-            15,
-            11,
-        );
+
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_cano,
-                &prefilter,
                 &sequence,
                 42,
                 kmer_size,
@@ -468,7 +445,6 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_cano,
-                &prefilter,
                 &random_sequence,
                 42,
                 kmer_size,
@@ -484,7 +460,6 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_cano,
-                &prefilter,
                 &to_small_sequence,
                 42,
                 kmer_size,
@@ -505,7 +480,6 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_both,
-                &prefilter,
                 &sequence,
                 42,
                 kmer_size,
@@ -521,7 +495,6 @@ mod tests {
         assert_eq!(
             shared_kmers_par::<_, matched_sequences::MachedCount>(
                 &kmer_set_both,
-                &prefilter,
                 &sequence,
                 42,
                 kmer_size,

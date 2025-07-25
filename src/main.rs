@@ -13,24 +13,9 @@ use back_to_sequences::back_to_sequences;
 use back_to_sequences::cli::Args;
 use back_to_sequences::kmer_counter::KmerCounterWithLog;
 
-
 ///////////////////////// MAIN /////////////////////////
 
 fn main() -> anyhow::Result<()> {
-    // env::set_var("RUST_BACKTRACE", "full"); //TODO remove this line in production
-
-    // This piece of codes shows an unexpected behavior with minimizer_iter. See https://github.com/rust-seq/minimizer-iter/issues/4
-    // use minimizer_iter::MinimizerBuilder;
-    // let min_iter = MinimizerBuilder::<u64>::new()
-    //     .minimizer_size(19)
-    //     .width(13) // k = w+m-1 = 31
-    //     .iter(b"GGTACATACCCTGTGGGAAGACTTACGTAAAACGCTTCCAGAGATCGGAGC"); 
-
-    // for (minimizer, position) in min_iter {
-    //     println!("minimizer {}, position {}", minimizer, position);
-    // }
-    // return Ok(());
-
     let args = Args::parse();
 
     // Set the number of threads for rayon
@@ -59,12 +44,6 @@ fn main() -> anyhow::Result<()> {
 
     if args.min_threshold > args.max_threshold {
         eprintln!("Error: --min-threshold must be <= --max-threshold");
-        std::process::exit(1);
-    }
-
-    // k must be odd
-    if args.kmer_size % 2 == 0 {
-        eprintln!("Error: --kmer-size must be odd");
         std::process::exit(1);
     }
 
