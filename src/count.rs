@@ -312,7 +312,7 @@ where
         // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
         let mut first_uncovered_position = 0;
         
-        let positions_worse_to_test = prefilter.potiential_kmer_positions(&read);
+        let positions_worse_to_test = prefilter.potiential_kmer_positions(read);
         for &i in &positions_worse_to_test { // OPTIMIZED
         // for i in 0..read.len()-kmer_size+1 { // NOT OPTIMIZED
             let kmer = &read[i..(i + kmer_size)];
@@ -352,7 +352,7 @@ where
         let normalizer_kmer = buf.as_mut_slice();
         // For computing the numbe of positions covered by at least a kmer, we need to keep track of the first uncovered position
         let mut first_uncovered_position = 0;
-        let positions_worse_to_test = prefilter.potiential_kmer_positions(&read);
+        let positions_worse_to_test = prefilter.potiential_kmer_positions(read);
         for i in positions_worse_to_test {
             let kmer = &read[i..(i + kmer_size)];
             let sequence_normalizer = SequenceNormalizer::new(kmer, reverse_complement);

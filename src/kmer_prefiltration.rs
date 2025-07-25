@@ -102,7 +102,7 @@ impl KmerPrefiltration {
         assert!(minimizer_positions.len() == 1);
 
         // println!("kmer {:?} has minimizer positions {:?}", String::from_utf8(kmer.to_vec()).unwrap(), minimizer_positions);
-        for canonical_minimizer_value in simd_minimizers::iter_canonical_minimizer_values(packed_seq.as_slice(), self.msize, &minimizer_positions){
+        if let Some(canonical_minimizer_value) = simd_minimizers::iter_canonical_minimizer_values(packed_seq.as_slice(), self.msize, &minimizer_positions).next(){
             // println!("kmer {:?} has minimizer value {}", String::from_utf8(kmer.to_vec()).unwrap(), canonical_minimizer_value);
             return canonical_minimizer_value;
         }
@@ -124,7 +124,7 @@ impl KmerPrefiltration {
     pub fn insert_kmer_set(&mut self, kmer_set: &[Vec<u8>]) {
         for kmer in kmer_set {
             // transform kmer to [u8]
-            self.insert(&kmer.as_slice());  
+            self.insert(kmer.as_slice());  
         }
     }
 
@@ -153,7 +153,7 @@ impl KmerPrefiltration {
                     std::cmp::min(
                     superkmer_pos_vec[i] + (2 * self.k - self.msize) as u32,
                     superkmer_pos_vec[i + 1]),
-                    last_position as u32
+                    last_position
                 );
 
                 for p in start..end {

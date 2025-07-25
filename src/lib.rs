@@ -76,7 +76,7 @@ pub fn back_to_sequences<T: KmerCounter>(
         msize,
     );
 
-    println!("Starting to count kmers in the reads from file: {}", in_fasta_reads);
+    println!("Starting to count kmers in the reads from file: {in_fasta_reads}");
 
     if !out_fasta_reads.is_empty() {
         // if an output file is provided, we output the sequences that contain the kmers
@@ -96,12 +96,10 @@ pub fn back_to_sequences<T: KmerCounter>(
                     true, // in this case we map both strands
                 )?;
             eprintln!(
-                "Filtered sequences with exact kmer count and mapping positions are in file {}",
-                out_fasta_reads
+                "Filtered sequences with exact kmer count and mapping positions are in file {out_fasta_reads}"
             );
             println!(
-                "Number of nucleotides seen {}",
-                total_nucleotides
+                "Number of nucleotides seen {total_nucleotides}"
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} kmer ratio {:.5}",
@@ -125,13 +123,11 @@ pub fn back_to_sequences<T: KmerCounter>(
                     false, // in this case we do not map both strands
                 )?;
             eprintln!(
-                "Filtered sequences with exact kmer count are in file {}",
-                out_fasta_reads
+                "Filtered sequences with exact kmer count are in file {out_fasta_reads}"
             );
             
             println!(
-                "Number of nucleotides seen {}",
-                total_nucleotides
+                "Number of nucleotides seen {total_nucleotides}"
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -154,8 +150,7 @@ pub fn back_to_sequences<T: KmerCounter>(
             )?;
         
         println!(
-            "Number of nucleotides seen {}",
-            total_nucleotides
+            "Number of nucleotides seen {total_nucleotides}"
         );
         println!(
             "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -180,8 +175,7 @@ pub fn back_to_sequences<T: KmerCounter>(
         .context("Error writing the kmers file")?;
 
         eprintln!(
-            "kmers with their number of occurrences in the original sequences are in file {}",
-            out_txt_kmers
+            "kmers with their number of occurrences in the original sequences are in file {out_txt_kmers}"
         );
     }
     Ok(())
@@ -215,10 +209,10 @@ pub fn back_to_multiple_sequences(
     // check that in_fasta_kmers is a non empty file:
 
     let input_files = read_file_lines(in_fasta_filenames.as_str())
-        .map_err(|e| eprintln!("Error reading file: {}", e))
+        .map_err(|e| eprintln!("Error reading file: {e}"))
         .unwrap();
     let output_files = read_file_lines(out_fasta_filenames.as_str())
-        .map_err(|e| eprintln!("Error reading file: {}", e))
+        .map_err(|e| eprintln!("Error reading file: {e}"))
         .unwrap();
 
     if input_files.len() != output_files.len() {
@@ -266,12 +260,10 @@ pub fn back_to_multiple_sequences(
                     true, // in this case we map both strands
                 )?;
             eprintln!(
-            "Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}",
-            in_f, out_f
+            "Filtered sequences from {in_f} with exact kmer count and mapping positions are in files specified at {out_f}"
             );
             println!(
-                "Number of nucleotides seen {}",
-                total_nucleotides
+                "Number of nucleotides seen {total_nucleotides}",
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -297,12 +289,10 @@ pub fn back_to_multiple_sequences(
                     false, // in this case we do not map both strands
                 )?;
             eprintln!(
-                "Filtered sequences from {} with exact kmer count are in files specified at {}",
-                in_f, out_f
+                "Filtered sequences from {in_f} with exact kmer count are in files specified at {out_f}",
             );
             println!(
-                "Number of nucleotides seen {}",
-                total_nucleotides
+                "Number of nucleotides seen {total_nucleotides}",
             );
             println!(
                 "Number of kmer seen {}, number of kmer match {} ratio {:.5}",
@@ -329,8 +319,7 @@ pub fn back_to_multiple_sequences(
         .context("Error writing the kmers file: {}")?;
 
         eprintln!(
-            "kmers with their number of occurrences in the original sequences are in file {}",
-            out_txt_kmers
+            "kmers with their number of occurrences in the original sequences are in file {out_txt_kmers}"
         );
     }
     Ok(())
