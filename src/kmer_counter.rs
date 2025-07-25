@@ -121,7 +121,7 @@ mod tests {
             });
 
             assert_eq!(counter.get_count(), i);
-            assert_eq!(counter.to_string(), format!("{}", i));
+            assert_eq!(counter.to_string(), format!("{i}"));
         }
 
         assert_eq!(counter.get_count(), 10);
