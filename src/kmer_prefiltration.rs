@@ -50,11 +50,17 @@ impl KmerPrefiltration {
 
 
         let bloom_filter = BloomFilter::with_num_bits(bloom_filter_size).hashes(1);
-        // BloomFilter::with_size_and_hashers(bloom_filter_size as usize,1, hasher_1, hasher_2);
+
+        // wsize cannot be < 1:
+        let wsize = if k < msize {
+            panic!("k cannot be less than msize");
+        } else {
+            k - msize + 1
+        };
         KmerPrefiltration {
             k,
             msize,
-            wsize: k - msize + 1,
+            wsize,
             bloom_filter_size,
             false_positive_rate,
             bloom_filter,

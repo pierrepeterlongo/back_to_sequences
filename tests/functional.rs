@@ -66,7 +66,8 @@ Options:
           Also outputs the number of positions covered by shared kmers
           (last value in parathesis)
   -k, --kmer-size <KMER_SIZE>
-          Size of the kmers to index and search [default: 31]
+          Size of the kmers to index and search
+          Note: must be odd [default: 31]
   -m, --min-threshold <MIN_THRESHOLD>
           Output sequences are those whose ratio of indexed kmers is in ]min_threshold; max_threshold]
           Minimal threshold of the ratio  (%) of kmers that must be found in a sequence to keep it (default 0%).
@@ -157,6 +158,22 @@ fn argument_trouble() -> std::result::Result<(), anyhow::Error> {
 
     assert.failure();
 
+    
+    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    cmd.args(["--in-kmers", &format!("{}", kmers_in_path.display()),
+    "--out-kmers",
+    &format!("{}", kmers_out_path.display()),
+    "--kmer-size",
+    "10",
+    ]);
+
+    let assert = cmd.assert().stderr(
+        "Error: --kmer-size must be odd\n",
+    );
+
+    assert.failure();
+
+
     let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
     cmd.args([
         "--in-kmers",
@@ -184,7 +201,7 @@ fn default_fasta() -> std::result::Result<(), anyhow::Error> {
     let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
-    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(11).build()?;
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
@@ -198,7 +215,7 @@ fn default_fasta() -> std::result::Result<(), anyhow::Error> {
 
     cmd.args([
         "-k",
-        "10",
+        "11",
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
         "--out-kmers",
@@ -209,7 +226,7 @@ fn default_fasta() -> std::result::Result<(), anyhow::Error> {
     .write_stdin(reads);
 
     let out = format!(
-        "Indexed 499 kmers, each of size 10
+        "Indexed 500 kmers, each of size 11
 Filtered sequences with exact kmer count are in file {}
 kmers with their number of occurrences in the original sequences are in file {}
 ",
@@ -228,7 +245,7 @@ kmers with their number of occurrences in the original sequences are in file {}
     std::fs::File::open("tests/data/reads_out.fasta")?.read_to_end(&mut reads_out_truth)?;
 
     assert_eq!(reads_out_content, reads_out_truth);
-
+    
     // check kmers output
     let mut kmers_out_content = vec![];
     std::fs::File::open(&kmers_out_path)?.read_to_end(&mut kmers_out_content)?;
@@ -248,7 +265,7 @@ fn no_output_fasta() -> std::result::Result<(), anyhow::Error> {
     let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
-    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(11).build()?;
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
@@ -261,7 +278,7 @@ fn no_output_fasta() -> std::result::Result<(), anyhow::Error> {
 
     cmd.args([
         "-k",
-        "10",
+        "11",
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
         "--out-kmers",
@@ -270,7 +287,7 @@ fn no_output_fasta() -> std::result::Result<(), anyhow::Error> {
     .write_stdin(reads);
 
     let out = format!(
-        "Indexed 499 kmers, each of size 10
+        "Indexed 500 kmers, each of size 11
 No output file provided, only the kmers with their count is output
 kmers with their number of occurrences in the original sequences are in file {}
 ",
@@ -300,7 +317,7 @@ fn kmer_position_fasta() -> std::result::Result<(), anyhow::Error> {
     let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
-    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(11).build()?;
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
@@ -314,7 +331,7 @@ fn kmer_position_fasta() -> std::result::Result<(), anyhow::Error> {
 
     cmd.args([
         "-k",
-        "10",
+        "11",
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
         "--out-kmers",
@@ -326,7 +343,7 @@ fn kmer_position_fasta() -> std::result::Result<(), anyhow::Error> {
     .write_stdin(reads);
 
     let out = format!(
-        "Indexed 499 kmers, each of size 10
+        "Indexed 500 kmers, each of size 11
 Filtered sequences with exact kmer count are in file {}
 kmers with their number of occurrences in the original sequences are in file {}
 ",
@@ -365,7 +382,7 @@ fn kmer_mapping_position_fasta() -> std::result::Result<(), anyhow::Error> {
     let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
-    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(11).build()?;
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
@@ -379,7 +396,7 @@ fn kmer_mapping_position_fasta() -> std::result::Result<(), anyhow::Error> {
 
     cmd.args([
         "-k",
-        "10",
+        "11",
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
         "--out-kmers",
@@ -392,7 +409,7 @@ fn kmer_mapping_position_fasta() -> std::result::Result<(), anyhow::Error> {
     .write_stdin(reads);
 
     let out = format!(
-        "Indexed 499 kmers, each of size 10
+        "Indexed 500 kmers, each of size 11
 Filtered sequences with exact kmer count and mapping positions are in file {}
 kmers with their number of occurrences in the original sequences are in file {}
 ",
@@ -437,7 +454,7 @@ fn multi_inout_not_same_length() -> std::result::Result<(), anyhow::Error> {
 
     cmd.args([
         "-k",
-        "10",
+        "11",
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
         "--out-kmers",
@@ -462,7 +479,7 @@ fn multi_fasta() -> std::result::Result<(), anyhow::Error> {
     let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
-    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(11).build()?;
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
@@ -493,7 +510,7 @@ fn multi_fasta() -> std::result::Result<(), anyhow::Error> {
 
     cmd.args([
         "-k",
-        "10",
+        "11",
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
         "--in-filelist",
@@ -505,7 +522,7 @@ fn multi_fasta() -> std::result::Result<(), anyhow::Error> {
     ]);
 
     let out = format!(
-        "Indexed 499 kmers, each of size 10
+        "Indexed 500 kmers, each of size 11
 Filtered sequences from {} with exact kmer count are in files specified at {}
 Filtered sequences from {} with exact kmer count are in files specified at {}
 kmers with their number of occurrences in the original sequences are in file {}
@@ -549,7 +566,7 @@ fn multi_fasta_mapping() -> std::result::Result<(), anyhow::Error> {
     let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
-    let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
+    let k_generate = biotest::Fasta::builder().sequence_len(11).build()?;
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
@@ -580,7 +597,7 @@ fn multi_fasta_mapping() -> std::result::Result<(), anyhow::Error> {
 
     cmd.args([
         "-k",
-        "10",
+        "11",
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
         "--in-filelist",
@@ -593,7 +610,7 @@ fn multi_fasta_mapping() -> std::result::Result<(), anyhow::Error> {
     ]);
 
     let out = format!(
-        "Indexed 499 kmers, each of size 10
+        "Indexed 500 kmers, each of size 11
 Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}
 Filtered sequences from {} with exact kmer count and mapping positions are in files specified at {}
 kmers with their number of occurrences in the original sequences are in file {}

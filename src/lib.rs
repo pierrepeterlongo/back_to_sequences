@@ -29,7 +29,7 @@ use crate::{kmer_counter::KmerCounter, kmer_prefiltration::KmerPrefiltration};
 
 
 /* constants */
-const MSIZE: usize = 19;
+const MSIZE: usize = 17;
 const BLOOM_FILTER_FALSE_POSITIVE_RATE: f32 = 0.01;
 
 /// Extract sequences that contain some kmers
@@ -62,11 +62,18 @@ pub fn back_to_sequences<T: KmerCounter>(
             .context("Error indexing kmers: ")?;
 
     let kmer_keys: Vec<Vec<u8>> = kmer_set.keys().cloned().collect();
+    // msize cannot be bigger than k
+    let msize = 
+    if MSIZE > kmer_size {
+        kmer_size - 1
+    } else {
+        MSIZE
+    };
     let prefilter = KmerPrefiltration::from_kmer_set(
         &kmer_keys,
         BLOOM_FILTER_FALSE_POSITIVE_RATE,
         kmer_size,
-        MSIZE,
+        msize,
     );
 
     println!("Starting to count kmers in the reads from file: {}", in_fasta_reads);
@@ -228,12 +235,17 @@ pub fn back_to_multiple_sequences(
         no_low_complexity,
     )
     .context("Error indexing kmers")?;
-
+    let msize = 
+    if MSIZE > kmer_size {
+        kmer_size - 1
+    } else {
+        MSIZE
+    };
     let prefilter = KmerPrefiltration::from_kmer_set(
         kmer_set.keys().cloned().collect::<Vec<_>>().as_slice(),
         BLOOM_FILTER_FALSE_POSITIVE_RATE,
         kmer_size,
-        MSIZE,
+        msize,
     );
 
 

@@ -62,6 +62,12 @@ fn main() -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
+    // k must be odd
+    if args.kmer_size % 2 == 0 {
+        eprintln!("Error: --kmer-size must be odd");
+        std::process::exit(1);
+    }
+
     if args.in_sequences.is_empty() && !args.in_filelist.is_empty() {
         if args.out_filelist.is_empty() {
             eprintln!("Error: --in-filelist requires --out-filelist");
