@@ -5,19 +5,23 @@
 /* crates use */
 use ahash::AHashMap as HashMap;
 use entropy::shannon_entropy;
-use fxread::initialize_reader;
+use needletail::{Sequence, parse_fastx_file};
 
 /* project use */
 use crate::{kmer_counter::KmerCounter, sequence_normalizer::SequenceNormalizer};
 
 /// given a kmer as a &[u8] return a tuple boolean, position
 /// if the kmer contains an non ACGT letter, return false and the position of the first non ACGT letter
+/// As we used needletail to normalize the sequences, we only check for 'N'
 /// else return true and 0 as position
 pub fn first_non_acgt(kmer: &[u8]) -> (bool, usize) {
     for (i, &byte) in kmer.iter().enumerate() {
-        if byte != b'A' && byte != b'C' && byte != b'G' && byte != b'T' {
+        if byte == b'N' {
             return (false, i);
         }
+        // if byte != b'A' && byte != b'C' && byte != b'G' && byte != b'T' {
+            // return (false, i);
+        // }
     }
     (true, 0)
 }
@@ -34,13 +38,19 @@ pub fn index_kmers<T: KmerCounter>(
     let mut kmer_set = HashMap::new();
     let reverse_complement = if stranded { Some(false) } else { None };
 
-    let mut reader = initialize_reader(&file_name)?;
-    loop {
-        let Some(mut record) = reader.next_record()? else {
-            break;
-        };
-        record.upper();
-        let acgt_sequence = record.seq();
+    let mut reader = parse_fastx_file(&file_name).unwrap();
+    while let Some(record) = reader.next() {
+        let seqrec = record.expect("invalid record");
+        let norm_seq = seqrec.normalize(false);
+        // transform norm_seq into a string on the ACGTN alphabet
+        let acgt_sequence = norm_seq.iter().cloned().collect::<Vec<u8>>(); // TODO optimize
+
+    // loop {
+    //     let Some(mut record) = reader.next()? else {
+    //         break;
+    //     };
+    //     record.upper();
+    //     let acgt_sequence = record.seq();
 
         // for each kmer of the sequence, insert it in the kmer_set
         if acgt_sequence.len() < kmer_size {
