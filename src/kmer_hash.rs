@@ -16,12 +16,12 @@ use crate::{kmer_counter::KmerCounter, sequence_normalizer::SequenceNormalizer};
 /// else return true and 0 as position
 pub fn first_non_acgt(kmer: &[u8]) -> (bool, usize) {
     for (i, &byte) in kmer.iter().enumerate() {
-        if byte == b'N' {
+        // if byte == b'N' {
+        //     return (false, i);
+        // }
+        if byte != b'A' && byte != b'C' && byte != b'G' && byte != b'T' {
             return (false, i);
         }
-        // if byte != b'A' && byte != b'C' && byte != b'G' && byte != b'T' {
-            // return (false, i);
-        // }
     }
     (true, 0)
 }

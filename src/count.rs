@@ -312,6 +312,8 @@ where
     C: KmerCounter,
     D: MatchedSequence + Sized,
 {
+    // prints the read in human readable format
+    println!("Read {}: {}", read_id, String::from_utf8_lossy(read));
     if read.len() < kmer_size {
         return D::new(0);
     }
@@ -456,7 +458,7 @@ mod tests {
                 false
             )
             .count,
-            135
+            136
         );
 
         let mut random_sequence = vec![];
@@ -507,7 +509,7 @@ mod tests {
                 true
             )
             .count,
-            135
+            136
         );
 
         rev_comp(&mut sequence);
@@ -522,7 +524,7 @@ mod tests {
                 true
             )
             .count,
-            135
+            136
         );
 
         Ok(())
