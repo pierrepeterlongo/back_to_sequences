@@ -57,7 +57,7 @@ where
 
     struct Chunk<D> {
         id: usize,
-        records: Vec<(usize, (Vec<u8>, Vec<u8>), Option<D>)>,
+        records: Vec<(usize, Vec<u8>, Vec<u8>, Option<D>)>,
         // records: Vec<(usize, parser::SequenceRecord<'a>, Option<D>)>,
         // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
     }
@@ -69,9 +69,9 @@ where
         File::create(out_fasta).context("Error: failed to open the sequence file for writing")?,
     );
 
-    let mut output_record = move |(_read_id, (id, seq), matched_sequence): (
+    let mut output_record = move |(_read_id, id, seq, matched_sequence): (
         usize,
-        (Vec<u8>, Vec<u8>),
+        Vec<u8>, Vec<u8>,
         Option<D>,
     )|
           -> std::io::Result<()> {
@@ -113,7 +113,7 @@ where
                         let record = result.expect("invalid record");
                         let id = record.id().to_vec();
                         let seq = record.normalize(false).to_owned().to_vec();
-                        vec.push((read_id, (id, seq), None));
+                        vec.push((read_id, id, seq, None));
                     }
                 }
                 read_id += 1;
@@ -131,7 +131,7 @@ where
         let mut buffer = HashMap::<usize, Vec<_>>::new();
 
         for id in 0.. {
-            let records: Vec<(usize, (Vec<u8>, Vec<u8>), Option<D>)> = match buffer.remove(&id) {
+            let records: Vec<(usize, Vec<u8>, Vec<u8>, Option<D>)> = match buffer.remove(&id) {
                 Some(vec) => vec,
                 None => loop {
                     match output_rx.recv() {
@@ -161,7 +161,7 @@ where
             let mut tt_kmer = 0;
             let mut match_kmer = 0;
             let mut tt_nt = 0; // total number of nucleotides
-            for (read_id, (_id, seq), nb_shared_kmers) in &mut chunk.records {
+            for (read_id, _id, seq, nb_shared_kmers) in &mut chunk.records {
                 if query_reverse {
                     // we need to reverse complement the sequence first
                     let mut rc_seq = seq.clone();
@@ -218,7 +218,7 @@ where
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
     struct Chunk<D> {
-        records: Vec<(usize, (Vec<u8>, Vec<u8>), Option<D>)>,
+        records: Vec<(usize, Vec<u8>, Option<D>)>,
         // records: Vec<(usize, parser::SequenceRecord<'a>, Option<D>)>,
         // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
     }
@@ -242,9 +242,8 @@ where
                     None => break,
                     Some(result) => {
                         let record = result.expect("invalid record");
-                        let id = record.id().to_vec();
                         let seq = record.normalize(false).to_owned().to_vec();
-                        vec.push((read_id, (id, seq), None)); // TODO useless id?
+                        vec.push((read_id, seq, None)); 
                     }                
                 }
                 read_id += 1;
@@ -265,7 +264,7 @@ where
             let mut tt_kmer = 0;
             let mut match_kmer = 0;
 
-            for (read_id, (_id, seq), nb_shared_kmers) in &mut chunk.records {
+            for (read_id, seq, nb_shared_kmers) in &mut chunk.records {
                 if query_reverse {
                     // we need to reverse complement the sequence first
                     let mut rc_seq = seq.clone();
