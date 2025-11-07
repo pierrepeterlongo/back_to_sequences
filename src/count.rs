@@ -9,7 +9,7 @@ use std::io::{BufWriter, Write};
 /* crates use */
 use ahash::AHashMap as HashMap;
 use anyhow::Context as _;
-use needletail::{Sequence, parse_fastx_file, parse_fastx_stdin};
+use needletail::{Sequence, parse_fastx_file, parse_fastx_stdin, parser};
 // use fxread::{initialize_reader, initialize_stdin_reader};
 use rayon::prelude::*;
 
@@ -55,10 +55,10 @@ where
     const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
     const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
-    struct Chunk<D> {
+    struct Chunk<'a,D> {
         id: usize,
-        records: Vec<(usize, Vec<u8>, Vec<u8>, Option<D>)>,
-        // records: Vec<(usize, parser::SequenceRecord<'a>, Option<D>)>,
+        // records: Vec<(usize, Vec<u8>, Vec<u8>, Option<D>)>,
+        records: Vec<(usize, parser::SequenceRecord<'a>, Option<D>)>,
         // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
     }
 
@@ -69,28 +69,31 @@ where
         File::create(out_fasta).context("Error: failed to open the sequence file for writing")?,
     );
 
-    let mut output_record = move |(_read_id, id, seq, matched_sequence): (
+    let mut output_record = move |(_read_id, record, matched_sequence): (
         usize,
-        Vec<u8>, Vec<u8>,
+        parser::SequenceRecord<'_>,
         Option<D>,
     )|
           -> std::io::Result<()> {
         let percent_shared_kmers = matched_sequence.as_ref().unwrap().percent_shared_kmers();
 
         if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
+            let id = record.id();
+            writeln!(output_file, ">{}{}", std::str::from_utf8(&id).unwrap(), matched_sequence.as_ref().unwrap())?;
+            let seq = record.sequence();
+            writeln!(output_file, "{}", std::str::from_utf8(&seq).unwrap())?;
             // supports the user defined thresholds
 
-            // let record_as_string = seq.1.to_owned();
-            let iter = seq.split(|&x| x == b'\n');
+            // let iter = seq.split(|&x| x == b'\n');
 
 
-            // output_file.write_all(iter.next().unwrap())?; // write the original header of the record
-            let header = std::str::from_utf8(&id).unwrap();
-            writeln!(output_file, ">{}{}", header, matched_sequence.as_ref().unwrap())?; // append metrics
-            for line in iter {
-                output_file.write_all(line)?;
-                output_file.write_all(b"\n")?;
-            }
+            // // output_file.write_all(iter.next().unwrap())?; // write the original header of the record
+            // let header = std::str::from_utf8(&id).unwrap();
+            // writeln!(output_file, ">{}{}", header, matched_sequence.as_ref().unwrap())?; // append metrics
+            // for line in iter {
+            //     output_file.write_all(line)?;
+            //     output_file.write_all(b"\n")?;
+            // }
         } // end read contains at least one indexed kmer
         Ok(())
     };
@@ -103,17 +106,16 @@ where
         };
 
         let mut read_id: usize = 0;
-        for id in 0.. {
+        let mut id = 0;
+        loop {
             let mut vec = Vec::with_capacity(CHUNK_SIZE);
             for _ in 0..CHUNK_SIZE {
-                match reader.next() {
-                    
+                let next_record = reader.next();
+                match next_record {
                     None => break,
                     Some(result) => {
                         let record = result.expect("invalid record");
-                        let id = record.id().to_vec();
-                        let seq = record.normalize(false).to_owned().to_vec();
-                        vec.push((read_id, id, seq, None));
+                        vec.push((read_id, record.clone(), None));
                     }
                 }
                 read_id += 1;
@@ -121,8 +123,8 @@ where
             if vec.is_empty() || input_tx.send(Chunk { id, records: vec }).is_err() {
                 return Ok(());
             }
+            id += 1;
         }
-        unreachable!()
     });
 
     let writer_thread = std::thread::spawn(move || -> io::Result<_> {
@@ -131,7 +133,7 @@ where
         let mut buffer = HashMap::<usize, Vec<_>>::new();
 
         for id in 0.. {
-            let records: Vec<(usize, Vec<u8>, Vec<u8>, Option<D>)> = match buffer.remove(&id) {
+            let records: Vec<(usize, parser::SequenceRecord<'_>, Option<D>)> = match buffer.remove(&id) {
                 Some(vec) => vec,
                 None => loop {
                     match output_rx.recv() {
@@ -161,18 +163,18 @@ where
             let mut tt_kmer = 0;
             let mut match_kmer = 0;
             let mut tt_nt = 0; // total number of nucleotides
-            for (read_id, _id, seq, nb_shared_kmers) in &mut chunk.records {
+            for (read_id, record, nb_shared_kmers) in &mut chunk.records {
                 if query_reverse {
                     // we need to reverse complement the sequence first
-                    let mut rc_seq = seq.clone();
-                    rev_comp(&mut rc_seq);
-                    *seq = rc_seq;
+                    record.reverse_complement();
                 }
-                tt_nt += seq.len();
-                tt_kmer += seq.len() - kmer_size + 1;
+                record.normalize(false);
+                tt_nt += record.num_bases();
+                tt_kmer += record.num_bases() - kmer_size + 1;
+
                 let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
-                    &seq,
+                    record.sequence(), // TODO: avoid extra copy, send record by reference
                     *read_id,
                     kmer_size,
                     stranded,
@@ -236,6 +238,7 @@ where
         let mut read_id = 0;
         for _ in 0.. {
             let mut vec = Vec::with_capacity(CHUNK_SIZE);
+            // let mut vec2 = Vec::with_capacity(CHUNK_SIZE);
             for _ in 0..CHUNK_SIZE {
                 match reader.next() {
                     
@@ -244,6 +247,7 @@ where
                         let record = result.expect("invalid record");
                         let seq = record.normalize(false).to_owned().to_vec();
                         vec.push((read_id, seq, None)); 
+                        // vec2.push((read_id, record));
                     }                
                 }
                 read_id += 1;
@@ -275,7 +279,7 @@ where
                 tt_kmer += seq.len() - kmer_size + 1;
                 let proxy_shared_kmers = shared_kmers_par::<_, D>(
                     kmer_set,
-                    &seq,
+                    seq,
                     *read_id,
                     kmer_size,
                     stranded,
