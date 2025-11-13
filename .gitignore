@@ -33,6 +33,7 @@ benchs/fof.*
 **/__pycache__
 
 # misc.
+.history/*
 Cargo.lock
 log_benchs_synthetic.txt 
 settings.json

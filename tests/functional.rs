@@ -11,7 +11,7 @@ use biotest::Format;
 
 #[test]
 fn help() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
 
     cmd.args(["--help"]);
 
@@ -113,7 +113,7 @@ fn argument_trouble() -> std::result::Result<(), anyhow::Error> {
     s_generate.records(&mut reads, &mut rng, 1)?;
     k_generate.create(&kmers_in_path, &mut rng, 500)?;
 
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     cmd.args(["--in-kmers", &format!("{}", kmers_in_path.display())]);
 
     let assert = cmd
@@ -122,7 +122,7 @@ fn argument_trouble() -> std::result::Result<(), anyhow::Error> {
 
     assert.failure();
 
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     cmd.args([
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
@@ -141,7 +141,7 @@ fn argument_trouble() -> std::result::Result<(), anyhow::Error> {
 
     assert.failure();
 
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     cmd.args([
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
@@ -157,7 +157,7 @@ fn argument_trouble() -> std::result::Result<(), anyhow::Error> {
 
     assert.failure();
 
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     cmd.args([
         "--in-kmers",
         &format!("{}", kmers_in_path.display()),
@@ -181,7 +181,7 @@ fn argument_trouble() -> std::result::Result<(), anyhow::Error> {
 
 #[test]
 fn default_fasta() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
     let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
@@ -245,7 +245,7 @@ kmers with their number of occurrences in the original sequences are in file {}
 
 #[test]
 fn no_output_fasta() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
     let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
@@ -297,7 +297,7 @@ kmers with their number of occurrences in the original sequences are in file {}
 
 #[test]
 fn kmer_position_fasta() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
     let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
@@ -362,7 +362,7 @@ kmers with their number of occurrences in the original sequences are in file {}
 
 #[test]
 fn kmer_mapping_position_fasta() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
     let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
@@ -421,7 +421,7 @@ kmers with their number of occurrences in the original sequences are in file {}
 
 #[test]
 fn multi_inout_not_same_length() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
 
     let temp_dir = tempfile::tempdir()?;
     let temp_path = temp_dir.path();
@@ -459,7 +459,7 @@ fn multi_inout_not_same_length() -> std::result::Result<(), anyhow::Error> {
 
 #[test]
 fn multi_fasta() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
     let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;
@@ -546,7 +546,7 @@ kmers with their number of occurrences in the original sequences are in file {}
 
 #[test]
 fn multi_fasta_mapping() -> std::result::Result<(), anyhow::Error> {
-    let mut cmd = assert_cmd::Command::cargo_bin("back_to_sequences")?;
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
     let mut rng = biotest::rand();
     let s_generate = biotest::Fasta::builder().build()?;
     let k_generate = biotest::Fasta::builder().sequence_len(10).build()?;

@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn non_empty_file_test() -> anyhow::Result<()> {
         let temp_dir = tempfile::tempdir()?;
-        let directory = temp_dir.into_path();
+        let directory = temp_dir.path().to_path_buf();
         let file = directory.join("empty.fasta");
 
         // test directory
