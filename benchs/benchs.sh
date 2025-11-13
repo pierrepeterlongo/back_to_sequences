@@ -1,3 +1,11 @@
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+BLUE='\033[1;034m'
+CYAN='\033[1;36m'
+NOCOLOR='\033[0m'
+
 export TIME="\t%E real,\t%U user,\t%S sys,\t%K amem,\t%M mmem"
 
 ## Run the benchs once data are generated
@@ -30,7 +38,9 @@ do
     fi
     echo
     echo "nb_reads: $nb_reads"
-    time back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads_${nb_reads}.fasta  --out-sequences filtered_reads_${nb_reads}.fasta  -k 31 --out-kmers counted_kmers_${nb_reads}.txt --counted-kmer-threshold 1 > /dev/null
+	cmd="back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads_${nb_reads}.fasta  --out-sequences filtered_reads_${nb_reads}.fasta  -k 31 --out-kmers counted_kmers_${nb_reads}.txt --counted-kmer-threshold 1"
+	echo -e "${GREEN}Running command: ${cmd}${NOCOLOR}"
+    time $cmd > /dev/null
     rm -f filtered_reads_${nb_reads}.fasta counted_kmers_${nb_reads}.txt
 done
 
@@ -44,6 +54,8 @@ do
     fi
     echo 
     echo "nb_reads: $nb_reads"
-    time back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads_${nb_reads}.fasta  --out-sequences filtered_reads_${nb_reads}.fasta  -k 31 --out-kmers counted_kmers_${nb_reads}.txt --output-kmer-positions --counted-kmer-threshold 1 > /dev/null
+	cmd="back_to_sequences --in-kmers compacted_kmers.fasta --in-sequences reads_${nb_reads}.fasta  --out-sequences filtered_reads_${nb_reads}.fasta  -k 31 --out-kmers counted_kmers_${nb_reads}.txt --output-kmer-positions --counted-kmer-threshold 1"
+	echo -e "${GREEN}Running command: ${cmd}${NOCOLOR}"
+    time $cmd > /dev/null
     rm -f filtered_reads_${nb_reads}.fasta counted_kmers_${nb_reads}.txt
 done
