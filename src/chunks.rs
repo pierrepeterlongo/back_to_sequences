@@ -286,8 +286,12 @@ pub fn for_each_reordered<I, X, O, F, E>(iter: I, func: &mut F)
 fn default_id() {}
 fn default_op(_:(), _:()) {}
 
+
+/// Type alias for the reduce function pair
+pub type NoReduceType = (fn(), fn((), ()));
+
 /// no-op `reduce` function for [Pipeline::run()]
-pub const NO_REDUCE: (fn() , fn((), ())) = (default_id, default_op);
+pub const NO_REDUCE: NoReduceType = (default_id, default_op);
 
 
 /// no-op `writer` function for [Pipeline::run()]
@@ -433,7 +437,7 @@ mod tests {
                                 count_a(rec.seq)
                             },
                             // reduce: compute the total sum of 'A' bases
-                            (|| 0, |a, b| (a + b)),
+                            (|| 0, |a, b| a + b),
 
                             // writer: send (id, seq, extra) to the channel
                             |rec| {

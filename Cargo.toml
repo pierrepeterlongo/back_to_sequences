@@ -1,6 +1,6 @@
 [package]
 name = "back_to_sequences"
-version = "0.7.2"
+version = "0.8.1"
 edition = "2021"
 
 authors = [
@@ -9,7 +9,7 @@ authors = [
 	"Pierre Marijon <pierre@marijon.fr>",
 	]
 description = "Back to sequences: find the origin of kmers"
-rust-version = "1.70"
+rust-version = "1.86"
 
 readme = "Readme.md"
 license-file = "LICENSE"

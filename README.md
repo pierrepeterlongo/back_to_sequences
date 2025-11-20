@@ -8,7 +8,7 @@
 <img src="k2s.jpg" alt="Old library - IA generated" width="150" height="150">
 
 
-Given a set $K$ of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing some of those kmers.
+Given a set $K$ of kmers (fasta / fastq [.gz] format) and a set of sequences  (fasta / fastq [.gz] format), this tool will extract the sequences containing some of those kmers. Input fasta can be multiline.
 
 A minimal ($m$) and a maximal ($M$) thresholds are proposed. A sequence whose percentage of kmers shared with $K$ are in $]m, M]$ is output with its original header + the number of shared kmers + the ratio of shared kmers:
 ```
@@ -42,10 +42,10 @@ We queried: from 10,000 reads to 200 million reads each of length 100.
 |:---------------:|:-------------:|:--------:|:--------:|:-------:|
 | 10,000          | 0.7s          | 0.54s    | 0.4s     | 0.13 GB |
 | 100,000         | 0.8s          | 0.8s     | 1.2s     | 0.13 GB |
-| 1,000,000       | 2.0s          | 3.5s     | 7.1s     | 0.13 GB |
+| 1,000,000       | 3.0s          | 3.5s     | 7.1s     | 0.13 GB |
 | 10,000,000      | 7.1s          | 11s      | 16s      | 0.13 GB |
-| 100,000,000     | 47s           | 58s      | 48s      | 0.13 GB |
-| 200,000,000     | 1m32s         | 1m52s    | 1m44     | 0.13 GB |
+| 100,000,000     | 32s           | 58s      | 48s      | 0.13 GB |
+| 200,000,000     | 1m01s         | 1m52s    | 1m44     | 0.13 GB |
 
 See [this page](https://b2s-doc.readthedocs.io/en/latest/results.html) for details
 

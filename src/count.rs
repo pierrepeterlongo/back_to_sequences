@@ -70,7 +70,7 @@ where
 
             let proxy_shared_kmers = shared_kmers_par::<_, D>(
                 kmer_set,
-                &record.seq,
+                record.seq,
                 record.read_id,
                 kmer_size,
                 stranded,
@@ -143,7 +143,7 @@ where
 
             let proxy_shared_kmers = shared_kmers_par::<_, D>(
                 kmer_set,
-                &record.seq,
+                record.seq,
                 record.read_id,
                 kmer_size,
                 stranded,
