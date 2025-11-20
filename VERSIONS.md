@@ -65,5 +65,5 @@
     * Outputs the number of matches of input kmers in the reads
 0.7.1 05/03/2025 
     * Bug fix for kmer count
-0.7.2 12/03/2025
-    * Now using needletail instead of fxreads
+0.8.0 20/11/2025
+    * Uses needlail. Enables multiline FASTA/FASTQ records

@@ -11,6 +11,7 @@ use atomic_counter::{AtomicCounter, RelaxedCounter};
 use anyhow::Context as _;
 
 /* mod declarations */
+pub mod chunks;
 pub mod cli;
 pub mod consts;
 pub mod count;
