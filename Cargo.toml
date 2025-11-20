@@ -2,6 +2,7 @@
 name = "back_to_sequences"
 version = "0.8.1"
 edition = "2021"
+repository = "https://github.com/pierrepeterlongo/back_to_sequences"
 
 authors = [
 	"Pierre Peterlongo <pierre.peterlongo@inria.fr>",
@@ -53,3 +54,8 @@ incremental = false
 [profile.profiling]
 inherits = "release"
 debug = true
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
