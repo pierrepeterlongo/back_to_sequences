@@ -2,20 +2,18 @@
 
 /* std use */
 use std::fs::File;
-use std::io::{self};
-use std::io::{stdin, BufWriter, Write};
-// use std::sync::Mutex;
+use std::io::{BufWriter, Write};
 
 /* crates use */
 use ahash::AHashMap as HashMap;
 use anyhow::Context as _;
-use fxread::{initialize_reader, initialize_stdin_reader};
-use rayon::prelude::*;
 
 /* project use */
+use crate::chunks::{NO_WRITER, Pipeline, WithoutId};
 use crate::kmer_counter::KmerCounter;
 use crate::matched_sequences::MatchedSequence;
 use crate::sequence_normalizer::SequenceNormalizer;
+
 
 /// Reverse complement a sequence in place.
 pub fn rev_comp(seq: &mut [u8]) {
@@ -50,144 +48,68 @@ where
     T: KmerCounter,
     D: MatchedSequence + Send + 'static,
 {
-    const CHUNK_SIZE: usize = 32; // number of records
-    const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
-    const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
-
-    struct Chunk<D> {
-        id: usize,
-        records: Vec<(usize, fxread::Record, Option<D>)>,
-        // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
-    }
-
-    let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(INPUT_CHANNEL_SIZE);
-    let (output_tx, output_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(OUTPUT_CHANNEL_SIZE);
+    let reader = match file_name.as_str() {
+        "" => needletail::parse_fastx_stdin()?,
+        f  => needletail::parse_fastx_file(f)?,
+    };
 
     let mut output_file = BufWriter::new(
         File::create(out_fasta).context("Error: failed to open the sequence file for writing")?,
     );
 
-    let mut output_record = move |(_read_id, record, matched_sequence): (
-        usize,
-        fxread::Record,
-        Option<D>,
-    )|
-          -> std::io::Result<()> {
-        let percent_shared_kmers = matched_sequence.as_ref().unwrap().percent_shared_kmers();
-
-        if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
-            // supports the user defined thresholds
-
-            let record_as_string = record.as_str().trim().as_bytes();
-            let mut iter = record_as_string.split(|&x| x == b'\n');
-
-            output_file.write_all(iter.next().unwrap())?; // write the original header of the record
-            writeln!(output_file, "{}", matched_sequence.as_ref().unwrap())?; // append metrics
-            for line in iter {
-                output_file.write_all(line)?;
-                output_file.write_all(b"\n")?;
+    Pipeline::<Option<D>>::run(
+        reader,
+        // map
+        |record| {
+            if query_reverse {
+                // we need to reverse complement the sequence first
+                rev_comp(record.seq);
             }
-        } // end read contains at least one indexed kmer
-        Ok(())
-    };
+            let total_nucleotides = record.seq.len();
+            let total_kmer = record.seq.len() - kmer_size + 1;
 
-    let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
-        let mut reader = if file_name.is_empty() {
-            initialize_stdin_reader(stdin().lock()).unwrap()
-        } else {
-            initialize_reader(&file_name).unwrap()
-        };
-
-        let mut read_id = 0;
-        for id in 0.. {
-            let mut vec = Vec::with_capacity(CHUNK_SIZE);
-            for _ in 0..CHUNK_SIZE {
-                match reader.next_record()? {
-                    None => break,
-                    Some(record) => vec.push((read_id, record, None)),
-                }
-                read_id += 1;
-            }
-            if vec.is_empty() || input_tx.send(Chunk { id, records: vec }).is_err() {
-                return Ok(());
-            }
-        }
-        unreachable!()
-    });
-
-    let writer_thread = std::thread::spawn(move || -> io::Result<_> {
-        // buffer for reordering the output (because Rayon::iter::ParallelBridge() does not
-        // preserve the original order of the items)
-        let mut buffer = HashMap::<usize, Vec<_>>::new();
-
-        for id in 0.. {
-            let records: Vec<(usize, fxread::Record, Option<D>)> = match buffer.remove(&id) {
-                Some(vec) => vec,
-                None => loop {
-                    match output_rx.recv() {
-                        Err(_) => {
-                            assert!(buffer.is_empty());
-                            return Ok(());
-                        }
-                        Ok(chunk) => {
-                            if chunk.id == id {
-                                break chunk.records;
-                            } else {
-                                buffer.insert(chunk.id, chunk.records);
-                            }
-                        }
-                    }
-                },
-            };
-            records.into_iter().try_for_each(&mut output_record)?;
-        }
-        unreachable!()
-    });
-
-    let (total_nucleotides, total_kmer, match_kmer) = input_rx
-        .into_iter()
-        .par_bridge()
-        .map(move |mut chunk| {
-            let mut tt_kmer = 0;
-            let mut match_kmer = 0;
-            let mut tt_nt = 0; // total number of nucleotides
-
-            for (read_id, record, nb_shared_kmers) in &mut chunk.records {
-                tt_nt += record.seq().len();
-                tt_kmer += record.seq().len() - kmer_size + 1;
-                record.upper();
-                if query_reverse {
-                    record.rev_comp(); // reverse the sequence in place
-                }
-                let proxy_shared_kmers = shared_kmers_par::<_, D>(
-                    kmer_set,
-                    record.seq(),
-                    *read_id,
-                    kmer_size,
-                    stranded,
-                    map_both_strands,
+            let proxy_shared_kmers = shared_kmers_par::<_, D>(
+                kmer_set,
+                &record.seq,
+                record.read_id,
+                kmer_size,
+                stranded,
+                map_both_strands,
                 );
 
-                match_kmer += proxy_shared_kmers.match_count();
+            let match_kmer = proxy_shared_kmers.match_count();
 
-                *nb_shared_kmers = Some(proxy_shared_kmers);
-            }
-            output_tx.send(chunk).ok(); // result ignored because an error on output_tx.send() would come together with an io
-                                        // error in the writer thread
-            (tt_nt, tt_kmer, match_kmer)
+            *record.extra = Some(proxy_shared_kmers);
+
+            (total_nucleotides, total_kmer, match_kmer)
+        },
+        // reduce
+        (
+            || (0, 0, 0),
+            |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2),
+        ),
+        // writer
+        |record| {
+            let matched_sequence = record.extra.as_ref().unwrap();
+            let percent_shared_kmers = matched_sequence.percent_shared_kmers();
+
+            if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
+                // supports the user defined thresholds
+
+                // let record_as_string = seq.1.to_owned();
+                let iter = record.seq.split(|&x| x == b'\n');
+
+
+                // output_file.write_all(iter.next().unwrap())?; // write the original header of the record
+                let header = std::str::from_utf8(record.id).unwrap();
+                writeln!(output_file, ">{}{}", header, matched_sequence)?; // append metrics
+                for line in iter {
+                    output_file.write_all(line)?;
+                    output_file.write_all(b"\n")?;
+                }
+            } // end read contains at least one indexed kmer
+            Ok(())
         })
-        .reduce(|| (0, 0, 0), |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2));
-
-    reader_thread
-        .join()
-        .unwrap()
-        .context("Error reading the sequences")?;
-    writer_thread
-        .join()
-        .unwrap()
-        .context("Error writing the sequences")?;
-
-    Ok((total_nucleotides, total_kmer, match_kmer))
 }
 
 /// for each sequence of a given fasta file, count the number of indexed kmers it contains
@@ -202,81 +124,45 @@ where
     T: KmerCounter,
     D: MatchedSequence + Send + 'static,
 {
-    const CHUNK_SIZE: usize = 32; // number of records
-    const INPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
-    const OUTPUT_CHANNEL_SIZE: usize = 8; // in units of CHUNK_SIZE records
 
-    struct Chunk<D> {
-        records: Vec<(usize, fxread::Record, Option<D>)>,
-        // records: Vec<(usize, fxread::Record, Box<dyn MatchedSequence>)>,
-    }
+    let reader = match file_name.as_str() {
+        "" => needletail::parse_fastx_stdin()?,
+        f  => needletail::parse_fastx_file(f)?,
+    };
 
-    let (input_tx, input_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(INPUT_CHANNEL_SIZE);
-    let (_output_tx, _output_rx) = std::sync::mpsc::sync_channel::<Chunk<D>>(OUTPUT_CHANNEL_SIZE);
-
-    let reader_thread = std::thread::spawn(move || -> anyhow::Result<()> {
-        let mut reader = if file_name.is_empty() {
-            initialize_stdin_reader(stdin().lock()).unwrap()
-        } else {
-            initialize_reader(&file_name).unwrap()
-        };
-
-        let mut read_id = 0;
-        for _ in 0.. {
-            let mut vec = Vec::with_capacity(CHUNK_SIZE);
-            for _ in 0..CHUNK_SIZE {
-                match reader.next_record()? {
-                    None => break,
-                    Some(record) => vec.push((read_id, record, None)),
-                }
-                read_id += 1;
+    Pipeline::<Option<D>, WithoutId>::run(
+        reader,
+        // map
+        |record| {
+            if query_reverse {
+                // we need to reverse complement the sequence first
+                rev_comp(record.seq);
             }
+            let total_nucleotides = record.seq.len();
+            let total_kmer = record.seq.len() - kmer_size + 1;
 
-            if vec.is_empty() || input_tx.send(Chunk { records: vec }).is_err() {
-                return Ok(());
-            }
-        }
-        unreachable!()
-    });
+            let proxy_shared_kmers = shared_kmers_par::<_, D>(
+                kmer_set,
+                &record.seq,
+                record.read_id,
+                kmer_size,
+                stranded,
+                false, // in this case we map only the kmer or its reverse complement not both
+            );
+            let match_kmer = proxy_shared_kmers.match_count();
 
-    let (total_nucleotides, total_kmer, match_kmer) = input_rx
-        .into_iter()
-        .par_bridge()
-        .map(move |mut chunk| {
-            let mut tt_nt = 0; // total number of nucleotides
-            let mut tt_kmer = 0;
-            let mut match_kmer = 0;
+            *record.extra = Some(proxy_shared_kmers);
 
-            for (read_id, record, nb_shared_kmers) in &mut chunk.records {
-                tt_nt += record.seq().len();
-                tt_kmer += record.seq().len() - kmer_size + 1;
-                record.upper();
-                if query_reverse {
-                    record.rev_comp(); // reverse the sequence in place
-                }
-                let proxy_shared_kmers = shared_kmers_par::<_, D>(
-                    kmer_set,
-                    record.seq(),
-                    *read_id,
-                    kmer_size,
-                    stranded,
-                    false, // in this case we map only the kmer or its reverse complement not both
-                );
-                match_kmer += proxy_shared_kmers.match_count();
-
-                *nb_shared_kmers = Some(proxy_shared_kmers);
-            }
-
-            (tt_nt, tt_kmer, match_kmer)
-        })
-        .reduce(|| (0, 0, 0), |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2));
-
-    reader_thread
-        .join()
-        .unwrap()
-        .context("Error reading the sequences")?;
-
-    Ok((total_nucleotides, total_kmer, match_kmer))
+            (total_nucleotides, total_kmer, match_kmer)
+        },
+        // reduce
+        (
+            || (0, 0, 0),
+            |a, b| (a.0 + b.0, a.1 + b.1, a.2 + b.2)
+        ),
+        // writer
+        NO_WRITER,
+        )
 }
 
 /// count the number of indexed kmers in a given read
@@ -292,6 +178,8 @@ where
     C: KmerCounter,
     D: MatchedSequence + Sized,
 {
+    // prints the read in human readable format
+    //println!("Read {}: {}", read_id, String::from_utf8_lossy(read));
     if read.len() < kmer_size {
         return D::new(0);
     }
@@ -436,7 +324,7 @@ mod tests {
                 false
             )
             .count,
-            135
+            136
         );
 
         let mut random_sequence = vec![];
@@ -487,7 +375,7 @@ mod tests {
                 true
             )
             .count,
-            135
+            136
         );
 
         rev_comp(&mut sequence);
@@ -502,7 +390,7 @@ mod tests {
                 true
             )
             .count,
-            135
+            136
         );
 
         Ok(())
