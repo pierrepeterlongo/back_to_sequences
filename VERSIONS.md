@@ -69,3 +69,5 @@
     * Now using needletail instead of fxreads
     * Enables multiline fasta input for kmers and sequences
     * Various code cleanups and optimizations
+0.8.2 20/11/2025
+    * Create a release
