@@ -3,6 +3,7 @@ name = "back_to_sequences"
 version = "0.8.1"
 edition = "2021"
 repository = "https://github.com/pierrepeterlongo/back_to_sequences"
+homepage = "https://b2s-doc.readthedocs.io/"
 
 authors = [
 	"Pierre Peterlongo <pierre.peterlongo@inria.fr>",
