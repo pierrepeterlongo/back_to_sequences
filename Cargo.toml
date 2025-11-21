@@ -12,8 +12,8 @@ authors = [
 	]
 description = "Back to sequences: find the origin of kmers"
 rust-version = "1.86"
-
-readme = "Readme.md"
+pr-run-mode = "upload"
+readme = "README.md"
 license-file = "LICENSE"
 
 [dependencies]
