@@ -20,7 +20,13 @@ In this case 20 kmers are shared with the indexed kmers. This represents 6.13% o
 
 ## Install
 
-Please see <https://b2s-doc.readthedocs.io/en/latest/usage.html#installation>
+**With conda/mamba:**
+
+```bash
+conda install -c bioconda back_to_sequences
+```
+
+**Other installation methods:** please see <https://b2s-doc.readthedocs.io/en/latest/usage.html#installation>
 
 ## Simplest usage
 
