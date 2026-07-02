@@ -1,5 +1,5 @@
 # Back to sequences
-
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/back_to_sequences/README.html)
 ![tests](https://github.com/pierrepeterlongo/back_to_sequences/workflows/tests/badge.svg)
 ![lints](https://github.com/pierrepeterlongo/back_to_sequences/workflows/lints/badge.svg)
 [![License](http://img.shields.io/:license-affero-blue.svg)](http://www.gnu.org/licenses/agpl-3.0.en.html)
