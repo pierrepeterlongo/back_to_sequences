@@ -631,3 +631,83 @@ kmers with their number of occurrences in the original sequences are in file {}
 
     Ok(())
 }
+
+/// Reads shared by the fastq tests (issue #20).
+///
+/// `r2` is the reverse complement of `r1`, `r3` shares no kmer with the query.
+/// Quality strings are not palindromic so that their orientation can be checked.
+const FASTQ_R1_SEQ: &str = "CAGATTTTCATATTATGCAGAAAATCTACTTCGCCTGATACGAGTCGGTTATCTTCGGAT";
+const FASTQ_R2_SEQ: &str = "ATCCGAAGATAACCGACTCGTATCAGGCGAAGTAGATTTTCTGCATAATATGAAAATCTG";
+const FASTQ_R3_SEQ: &str = "GGCTAAGCTTACGTTAGCCAGTCAAGTTCCAGATGCGTATTGCAACCGGTAGCATGCCTA";
+const FASTQ_R1_QUAL: &str = "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!IIIIIIIIIIIIIIIIIIIIIIIIIIIIII";
+const FASTQ_R2_QUAL: &str = "##############################555555555555555555555555555555";
+const FASTQ_R3_QUAL: &str = "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII";
+/// 31-mer taken from `r1` (positions 10..41)
+const FASTQ_QUERY: &str = "CATATTATGCAGAAAATCTACTTCGCCTGAT";
+
+/// Run back_to_sequences on the shared fastq reads with `extra_args` and return the output file content
+fn run_on_fastq(extra_args: &[&str]) -> std::result::Result<String, anyhow::Error> {
+    let temp_dir = tempfile::tempdir()?;
+    let temp_path = temp_dir.path();
+    let kmers_in_path = temp_path.join("query.fasta");
+    let reads_in_path = temp_path.join("reads.fastq");
+    let reads_out_path = temp_path.join("output.fastq");
+
+    std::fs::write(&kmers_in_path, format!(">q\n{FASTQ_QUERY}\n"))?;
+    std::fs::write(
+        &reads_in_path,
+        format!(
+            "@r1 fwd\n{FASTQ_R1_SEQ}\n+\n{FASTQ_R1_QUAL}\n\
+             @r2 rc\n{FASTQ_R2_SEQ}\n+\n{FASTQ_R2_QUAL}\n\
+             @r3 none\n{FASTQ_R3_SEQ}\n+\n{FASTQ_R3_QUAL}\n"
+        ),
+    )?;
+
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("back_to_sequences");
+    cmd.args([
+        "-k",
+        "31",
+        "-t",
+        "1",
+        "--in-kmers",
+        &format!("{}", kmers_in_path.display()),
+        "--in-sequences",
+        &format!("{}", reads_in_path.display()),
+        "--out-sequences",
+        &format!("{}", reads_out_path.display()),
+    ])
+    .args(extra_args);
+    cmd.assert().success();
+
+    Ok(std::fs::read_to_string(&reads_out_path)?)
+}
+
+#[test]
+fn fastq_input_gives_fastq_output() -> std::result::Result<(), anyhow::Error> {
+    let truth = format!(
+        "@r1 fwd 1 3.33333\n{FASTQ_R1_SEQ}\n+\n{FASTQ_R1_QUAL}\n\
+         @r2 rc 1 3.33333\n{FASTQ_R2_SEQ}\n+\n{FASTQ_R2_QUAL}\n"
+    );
+    assert_eq!(run_on_fastq(&[])?, truth);
+    Ok(())
+}
+
+#[test]
+fn fastq_input_gives_fastq_output_stranded() -> std::result::Result<(), anyhow::Error> {
+    let truth = format!("@r1 fwd 1 3.33333\n{FASTQ_R1_SEQ}\n+\n{FASTQ_R1_QUAL}\n");
+    assert_eq!(run_on_fastq(&["--stranded"])?, truth);
+    Ok(())
+}
+
+#[test]
+fn fastq_query_reverse_reverses_quality() -> std::result::Result<(), anyhow::Error> {
+    // the sequences are reverse complemented, so the quality strings must be reversed too
+    let r1_qual_rev: String = FASTQ_R1_QUAL.chars().rev().collect();
+    let r2_qual_rev: String = FASTQ_R2_QUAL.chars().rev().collect();
+    let truth = format!(
+        "@r1 fwd 1 3.33333\n{FASTQ_R2_SEQ}\n+\n{r1_qual_rev}\n\
+         @r2 rc 1 3.33333\n{FASTQ_R1_SEQ}\n+\n{r2_qual_rev}\n"
+    );
+    assert_eq!(run_on_fastq(&["--query-reverse"])?, truth);
+    Ok(())
+}

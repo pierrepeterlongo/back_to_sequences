@@ -64,6 +64,10 @@ where
             if query_reverse {
                 // we need to reverse complement the sequence first
                 rev_comp(record.seq);
+                // and keep the quality scores aligned with the reversed sequence
+                if let Some(qual) = record.qual {
+                    qual.reverse();
+                }
             }
             let total_nucleotides = record.seq.len();
             let total_kmer = record.seq.len() - kmer_size + 1;
@@ -96,15 +100,15 @@ where
             if percent_shared_kmers > min_threshold && percent_shared_kmers <= max_threshold {
                 // supports the user defined thresholds
 
-                // let record_as_string = seq.1.to_owned();
-                let iter = record.seq.split(|&x| x == b'\n');
-
-
-                // output_file.write_all(iter.next().unwrap())?; // write the original header of the record
+                // keep the input format: fastq records (with quality) stay fastq, fasta stay fasta
                 let header = std::str::from_utf8(record.id).unwrap();
-                writeln!(output_file, ">{}{}", header, matched_sequence)?; // append metrics
-                for line in iter {
-                    output_file.write_all(line)?;
+                let marker = if record.qual.is_some() { '@' } else { '>' };
+                writeln!(output_file, "{}{}{}", marker, header, matched_sequence)?; // append metrics
+                output_file.write_all(record.seq)?;
+                output_file.write_all(b"\n")?;
+                if let Some(qual) = record.qual {
+                    output_file.write_all(b"+\n")?;
+                    output_file.write_all(qual)?;
                     output_file.write_all(b"\n")?;
                 }
             } // end read contains at least one indexed kmer

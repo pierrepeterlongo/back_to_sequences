@@ -39,10 +39,14 @@ where X: Send,
         where F: FnMut(Record<'_, X>) -> Result<(), E>
     {
         for rec in &mut self.records {
-            let [id, seq] = self.buf.get_disjoint_mut([rec.id_start.get(&rec.seq), rec.seq.clone()]).unwrap();
+            // an absent quality string is mapped to an empty range located after the sequence
+            let qual_range = rec.qual.clone().unwrap_or(rec.seq.end..rec.seq.end);
+            let [id, seq, qual] = self.buf.get_disjoint_mut(
+                [rec.id_start.get(&rec.seq), rec.seq.clone(), qual_range]).unwrap();
             func(Record{
                 read_id: rec.read_id,
                 id, seq,
+                qual: rec.qual.as_ref().map(|_| qual),
                 extra: &mut rec.extra,
             })?;
         }
@@ -70,6 +74,12 @@ pub struct Record<'a, X> {
     /// normalized fastx sequence
     pub seq: &'a mut [u8],
 
+    /// quality string of the record
+    ///
+    /// `Some` only for fastq input, and only when the chunks are built with [WithId]
+    /// (it has the same length as [Record::seq])
+    pub qual: Option<&'a mut [u8]>,
+
     /// extra field containing user data
     pub extra: &'a mut X,
 }
@@ -85,12 +95,19 @@ struct InnerRecord<X, O> {
     /// position of the sequence in the chunk buffer
     seq: std::ops::Range<usize>,
 
+    /// position of the quality string in the chunk buffer (fastq input only)
+    qual: Option<std::ops::Range<usize>>,
+
     /// extra field containing user data
     extra: X
 }
 
 /// Trait for including or excluding the "id" field in the fastx record
+///
+/// The quality strings (fastq input) are stored only when the id is stored, since both are needed
+/// only to write the records back.
 trait OptionalId: Sized {
+    const STORE_QUAL: bool;
     fn len(id: &[u8]) -> usize;
     fn set(id: &[u8], buf: &mut Vec<u8>) -> Self;
     fn get(&self, seq: &Range<usize>) -> Range<usize>;
@@ -106,6 +123,7 @@ pub struct WithId(usize);
 
 impl OptionalId for WithoutId
 {
+    const STORE_QUAL: bool = false;
     fn len(_id: &[u8]) -> usize { 0 }
     fn set(_id: &[u8], _buf: &mut Vec<u8>) -> Self { Self }
     fn get(&self, _seq: &Range<usize>) -> Range<usize> { 0..0 }
@@ -113,6 +131,7 @@ impl OptionalId for WithoutId
 
 impl OptionalId for WithId
 {
+    const STORE_QUAL: bool = true;
     fn len(id: &[u8]) -> usize {
         id.len()
     }
@@ -173,21 +192,32 @@ where X: Send + Default,
             // prepare the new InnerRecord
             let id  = seq_record.id();
             let seq = seq_record.normalize(false);
+            let qual = if O::STORE_QUAL { seq_record.qual() } else { None };
+            if let Some(q) = qual {
+                // normalize() never changes the length of a (single-line) fastq sequence
+                debug_assert_eq!(q.len(), seq.len());
+            }
 
             let push_record = |chunk: &mut Chunk<X, O>| {
                 let id_start  = O::set(id, &mut chunk.buf);
                 let seq_start = chunk.buf.len();
                 chunk.buf.extend_from_slice(&seq);
                 let end       = chunk.buf.len();
+                let qual = qual.map(|q| {
+                    chunk.buf.extend_from_slice(q);
+                    end..chunk.buf.len()
+                });
                 chunk.records.push(InnerRecord{
                     read_id, id_start,
                     seq: seq_start..end,
+                    qual,
                     extra: X::default(),
                 });
             };
 
             // flush the current chunk if the new record would overfill its buffer
-            let needed_capacity = self.chunk.buf.len() + O::len(id) + seq.len();
+            let needed_capacity = self.chunk.buf.len() + O::len(id) + seq.len()
+                + qual.map_or(0, <[u8]>::len);
             if self.chunk.buf.capacity() < needed_capacity && !self.chunk.records.is_empty()
             {
                 let mut new_chunk = Self::new_chunk(self.chunk_id);
