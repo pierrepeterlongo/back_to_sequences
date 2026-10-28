@@ -71,3 +71,6 @@
   * Various code cleanups and optimizations
 0.8.2 20/11/2025
   * Create a release
+0.8.5 28/10/2026
+  * Bug fix: fastq input produces fastq output again (quality scores were dropped since 0.7.2, issue #20)
+  * With `--query-reverse`, quality strings are reversed along with the reverse complemented sequences
